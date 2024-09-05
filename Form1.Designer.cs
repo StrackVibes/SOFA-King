@@ -89,7 +89,7 @@ namespace SOFA_Generator
             lastNameTextBox.Location = new Point(172, 140);
             lastNameTextBox.Name = "lastNameTextBox";
             lastNameTextBox.Size = new Size(150, 34);
-            lastNameTextBox.TabIndex = 0;
+            lastNameTextBox.TabIndex = 7;
             lastNameTextBox.Visible = false;
             // 
             // firstNameTextBox
@@ -98,7 +98,7 @@ namespace SOFA_Generator
             firstNameTextBox.Location = new Point(172, 180);
             firstNameTextBox.Name = "firstNameTextBox";
             firstNameTextBox.Size = new Size(150, 34);
-            firstNameTextBox.TabIndex = 2;
+            firstNameTextBox.TabIndex = 8;
             firstNameTextBox.Visible = false;
             // 
             // dodIdTextBox
@@ -107,7 +107,7 @@ namespace SOFA_Generator
             dodIdTextBox.Location = new Point(355, 21);
             dodIdTextBox.Name = "dodIdTextBox";
             dodIdTextBox.Size = new Size(252, 34);
-            dodIdTextBox.TabIndex = 6;
+            dodIdTextBox.TabIndex = 1;
             // 
             // checkedListBox1
             // 
@@ -117,7 +117,7 @@ namespace SOFA_Generator
             checkedListBox1.Location = new Point(172, 543);
             checkedListBox1.Name = "checkedListBox1";
             checkedListBox1.Size = new Size(150, 62);
-            checkedListBox1.TabIndex = 10;
+            checkedListBox1.TabIndex = 17;
             checkedListBox1.Visible = false;
             checkedListBox1.SelectedIndexChanged += checkedListBox1_SelectedIndexChanged;
             // 
@@ -125,9 +125,9 @@ namespace SOFA_Generator
             // 
             signaturePanel.BorderStyle = BorderStyle.FixedSingle;
             signaturePanel.Controls.Add(sigPlusNET1);
-            signaturePanel.Location = new Point(6, 144);
+            signaturePanel.Location = new Point(8, 151);
             signaturePanel.Name = "signaturePanel";
-            signaturePanel.Size = new Size(293, 108);
+            signaturePanel.Size = new Size(293, 51);
             signaturePanel.TabIndex = 11;
             signaturePanel.Visible = false;
             // 
@@ -135,10 +135,11 @@ namespace SOFA_Generator
             // 
             sigPlusNET1.BackColor = Color.White;
             sigPlusNET1.ForeColor = Color.Black;
-            sigPlusNET1.Location = new Point(-5, -1);
+            sigPlusNET1.Location = new Point(-1, -1);
             sigPlusNET1.Name = "sigPlusNET1";
-            sigPlusNET1.Size = new Size(299, 105);
+            sigPlusNET1.Size = new Size(293, 51);
             sigPlusNET1.TabIndex = 0;
+            sigPlusNET1.Click += sigPlusNET1_Click;
             // 
             // label6
             // 
@@ -156,7 +157,7 @@ namespace SOFA_Generator
             btnSaveSignature.Location = new Point(712, 578);
             btnSaveSignature.Name = "btnSaveSignature";
             btnSaveSignature.Size = new Size(130, 62);
-            btnSaveSignature.TabIndex = 13;
+            btnSaveSignature.TabIndex = 30;
             btnSaveSignature.Text = "Save and Print";
             btnSaveSignature.UseVisualStyleBackColor = true;
             btnSaveSignature.Visible = false;
@@ -168,7 +169,7 @@ namespace SOFA_Generator
             btnRequestSignature.Location = new Point(6, 15);
             btnRequestSignature.Name = "btnRequestSignature";
             btnRequestSignature.Size = new Size(293, 40);
-            btnRequestSignature.TabIndex = 14;
+            btnRequestSignature.TabIndex = 28;
             btnRequestSignature.Text = "Request Signature";
             btnRequestSignature.UseVisualStyleBackColor = true;
             btnRequestSignature.Visible = false;
@@ -180,7 +181,7 @@ namespace SOFA_Generator
             btnGeneratePermitNumber.Location = new Point(781, 19);
             btnGeneratePermitNumber.Name = "btnGeneratePermitNumber";
             btnGeneratePermitNumber.Size = new Size(252, 39);
-            btnGeneratePermitNumber.TabIndex = 15;
+            btnGeneratePermitNumber.TabIndex = 3;
             btnGeneratePermitNumber.Text = "Generate Permit Number";
             btnGeneratePermitNumber.UseVisualStyleBackColor = true;
             btnGeneratePermitNumber.Visible = false;
@@ -195,7 +196,7 @@ namespace SOFA_Generator
             permit1TextBox.Location = new Point(307, 39);
             permit1TextBox.Name = "permit1TextBox";
             permit1TextBox.Size = new Size(85, 27);
-            permit1TextBox.TabIndex = 16;
+            permit1TextBox.TabIndex = 22;
             permit1TextBox.Visible = false;
             // 
             // issue1DateTimePicker
@@ -205,7 +206,7 @@ namespace SOFA_Generator
             issue1DateTimePicker.Location = new Point(17, 40);
             issue1DateTimePicker.Name = "issue1DateTimePicker";
             issue1DateTimePicker.Size = new Size(139, 27);
-            issue1DateTimePicker.TabIndex = 17;
+            issue1DateTimePicker.TabIndex = 20;
             issue1DateTimePicker.Visible = false;
             // 
             // exp1DateTimePicker
@@ -215,7 +216,7 @@ namespace SOFA_Generator
             exp1DateTimePicker.Location = new Point(162, 39);
             exp1DateTimePicker.Name = "exp1DateTimePicker";
             exp1DateTimePicker.Size = new Size(139, 27);
-            exp1DateTimePicker.TabIndex = 18;
+            exp1DateTimePicker.TabIndex = 21;
             exp1DateTimePicker.Visible = false;
             exp1DateTimePicker.ValueChanged += exp1DateTimePicker_ValueChanged;
             // 
@@ -227,7 +228,7 @@ namespace SOFA_Generator
             permit2TextBox.Location = new Point(305, 39);
             permit2TextBox.Name = "permit2TextBox";
             permit2TextBox.Size = new Size(87, 27);
-            permit2TextBox.TabIndex = 19;
+            permit2TextBox.TabIndex = 25;
             permit2TextBox.Visible = false;
             permit2TextBox.TextChanged += permit2TextBox_TextChanged;
             // 
@@ -238,7 +239,7 @@ namespace SOFA_Generator
             issue2DateTimePicker.Location = new Point(21, 40);
             issue2DateTimePicker.Name = "issue2DateTimePicker";
             issue2DateTimePicker.Size = new Size(136, 27);
-            issue2DateTimePicker.TabIndex = 20;
+            issue2DateTimePicker.TabIndex = 23;
             issue2DateTimePicker.Visible = false;
             issue2DateTimePicker.ValueChanged += issue2DateTimePicker_ValueChanged;
             // 
@@ -249,7 +250,7 @@ namespace SOFA_Generator
             exp2DateTimePicker.Location = new Point(163, 40);
             exp2DateTimePicker.Name = "exp2DateTimePicker";
             exp2DateTimePicker.Size = new Size(136, 27);
-            exp2DateTimePicker.TabIndex = 21;
+            exp2DateTimePicker.TabIndex = 24;
             exp2DateTimePicker.Visible = false;
             exp2DateTimePicker.ValueChanged += exp2DateTimePicker_ValueChanged;
             // 
@@ -259,7 +260,7 @@ namespace SOFA_Generator
             btnSearch.Location = new Point(613, 18);
             btnSearch.Name = "btnSearch";
             btnSearch.Size = new Size(125, 40);
-            btnSearch.TabIndex = 22;
+            btnSearch.TabIndex = 2;
             btnSearch.Text = "Search";
             btnSearch.UseVisualStyleBackColor = true;
             btnSearch.Click += btnSearch_Click_1;
@@ -271,7 +272,7 @@ namespace SOFA_Generator
             catPaxComboBox.Location = new Point(172, 651);
             catPaxComboBox.Name = "catPaxComboBox";
             catPaxComboBox.Size = new Size(150, 28);
-            catPaxComboBox.TabIndex = 24;
+            catPaxComboBox.TabIndex = 19;
             catPaxComboBox.Visible = false;
             // 
             // label1
@@ -292,7 +293,7 @@ namespace SOFA_Generator
             groupBox1.Location = new Point(367, 101);
             groupBox1.Name = "groupBox1";
             groupBox1.Size = new Size(408, 103);
-            groupBox1.TabIndex = 26;
+            groupBox1.TabIndex = 31;
             groupBox1.TabStop = false;
             groupBox1.Text = "First Permit";
             // 
@@ -304,7 +305,7 @@ namespace SOFA_Generator
             groupBox2.Location = new Point(781, 101);
             groupBox2.Name = "groupBox2";
             groupBox2.Size = new Size(412, 103);
-            groupBox2.TabIndex = 27;
+            groupBox2.TabIndex = 32;
             groupBox2.TabStop = false;
             groupBox2.Text = "New Permit";
             // 
@@ -315,7 +316,7 @@ namespace SOFA_Generator
             dobDateTimePicker.Location = new Point(172, 262);
             dobDateTimePicker.Name = "dobDateTimePicker";
             dobDateTimePicker.Size = new Size(150, 34);
-            dobDateTimePicker.TabIndex = 29;
+            dobDateTimePicker.TabIndex = 10;
             dobDateTimePicker.ValueChanged += dobDateTimePicker_ValueChanged;
             // 
             // heightTextBox
@@ -324,7 +325,7 @@ namespace SOFA_Generator
             heightTextBox.Location = new Point(172, 302);
             heightTextBox.Name = "heightTextBox";
             heightTextBox.Size = new Size(150, 34);
-            heightTextBox.TabIndex = 30;
+            heightTextBox.TabIndex = 11;
             // 
             // weightTextBox
             // 
@@ -332,18 +333,19 @@ namespace SOFA_Generator
             weightTextBox.Location = new Point(172, 342);
             weightTextBox.Name = "weightTextBox";
             weightTextBox.Size = new Size(150, 34);
-            weightTextBox.TabIndex = 31;
+            weightTextBox.TabIndex = 12;
             // 
             // hairColorComboBox
             // 
             hairColorComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             hairColorComboBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
             hairColorComboBox.FormattingEnabled = true;
+            hairColorComboBox.ItemHeight = 28;
             hairColorComboBox.Items.AddRange(new object[] { "Black", "Brown", "Blonde", "Red", "Gray", "Other" });
             hairColorComboBox.Location = new Point(172, 382);
             hairColorComboBox.Name = "hairColorComboBox";
             hairColorComboBox.Size = new Size(150, 36);
-            hairColorComboBox.TabIndex = 32;
+            hairColorComboBox.TabIndex = 13;
             hairColorComboBox.SelectedIndexChanged += hairColorComboBox_SelectedIndexChanged;
             // 
             // eyeColorComboBox
@@ -351,11 +353,12 @@ namespace SOFA_Generator
             eyeColorComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
             eyeColorComboBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
             eyeColorComboBox.FormattingEnabled = true;
+            eyeColorComboBox.ItemHeight = 28;
             eyeColorComboBox.Items.AddRange(new object[] { "Brown", "Blue", "Green", "Hazel", "Gray", "Other" });
             eyeColorComboBox.Location = new Point(172, 424);
             eyeColorComboBox.Name = "eyeColorComboBox";
             eyeColorComboBox.Size = new Size(150, 36);
-            eyeColorComboBox.TabIndex = 33;
+            eyeColorComboBox.TabIndex = 14;
             // 
             // sexLabel
             // 
@@ -490,7 +493,7 @@ namespace SOFA_Generator
             MSFcheckBox.Location = new Point(29, 612);
             MSFcheckBox.Name = "MSFcheckBox";
             MSFcheckBox.Size = new Size(73, 32);
-            MSFcheckBox.TabIndex = 49;
+            MSFcheckBox.TabIndex = 18;
             MSFcheckBox.Text = "MSF";
             MSFcheckBox.UseVisualStyleBackColor = true;
             MSFcheckBox.CheckedChanged += checkBox1_CheckedChanged;
@@ -502,7 +505,7 @@ namespace SOFA_Generator
             restrictionsBox.Location = new Point(29, 505);
             restrictionsBox.Name = "restrictionsBox";
             restrictionsBox.Size = new Size(181, 32);
-            restrictionsBox.TabIndex = 50;
+            restrictionsBox.TabIndex = 16;
             restrictionsBox.Text = "Glasses/Contacts";
             restrictionsBox.UseVisualStyleBackColor = true;
             restrictionsBox.CheckedChanged += restrictionsBox_CheckedChanged;
@@ -513,7 +516,7 @@ namespace SOFA_Generator
             remarksBox.Location = new Point(863, 210);
             remarksBox.Name = "remarksBox";
             remarksBox.Size = new Size(330, 34);
-            remarksBox.TabIndex = 51;
+            remarksBox.TabIndex = 27;
             remarksBox.TextChanged += remarksBox_TextChanged;
             // 
             // remarksLabel
@@ -534,7 +537,7 @@ namespace SOFA_Generator
             issuerComboBox.Location = new Point(510, 210);
             issuerComboBox.Name = "issuerComboBox";
             issuerComboBox.Size = new Size(240, 36);
-            issuerComboBox.TabIndex = 53;
+            issuerComboBox.TabIndex = 26;
             issuerComboBox.SelectedIndexChanged += issuerComboBox_SelectedIndexChanged;
             // 
             // issuerLabel
@@ -552,7 +555,7 @@ namespace SOFA_Generator
             btnBrowse.Location = new Point(29, 21);
             btnBrowse.Name = "btnBrowse";
             btnBrowse.Size = new Size(149, 40);
-            btnBrowse.TabIndex = 23;
+            btnBrowse.TabIndex = 0;
             btnBrowse.Text = "SOFA Database 📂";
             btnBrowse.UseVisualStyleBackColor = true;
             btnBrowse.Click += btnBrowse_Click;
@@ -565,7 +568,7 @@ namespace SOFA_Generator
             sexComboBox.Location = new Point(172, 220);
             sexComboBox.Name = "sexComboBox";
             sexComboBox.Size = new Size(150, 36);
-            sexComboBox.TabIndex = 56;
+            sexComboBox.TabIndex = 9;
             // 
             // statusComboBox
             // 
@@ -576,7 +579,7 @@ namespace SOFA_Generator
             statusComboBox.Location = new Point(100, 101);
             statusComboBox.Name = "statusComboBox";
             statusComboBox.Size = new Size(65, 33);
-            statusComboBox.TabIndex = 55;
+            statusComboBox.TabIndex = 5;
             statusComboBox.SelectedIndexChanged += comboBox1_SelectedIndexChanged;
             // 
             // militaryRankComboBox
@@ -587,7 +590,7 @@ namespace SOFA_Generator
             militaryRankComboBox.Location = new Point(246, 101);
             militaryRankComboBox.Name = "militaryRankComboBox";
             militaryRankComboBox.Size = new Size(76, 33);
-            militaryRankComboBox.TabIndex = 57;
+            militaryRankComboBox.TabIndex = 6;
             militaryRankComboBox.Visible = false;
             militaryRankComboBox.SelectedIndexChanged += militaryRankComboBox_SelectedIndexChanged;
             // 
@@ -622,7 +625,7 @@ namespace SOFA_Generator
             unitComboBox.Location = new Point(172, 466);
             unitComboBox.Name = "unitComboBox";
             unitComboBox.Size = new Size(150, 33);
-            unitComboBox.TabIndex = 8;
+            unitComboBox.TabIndex = 15;
             // 
             // btnReset
             // 
@@ -631,7 +634,7 @@ namespace SOFA_Generator
             btnReset.Location = new Point(1075, 18);
             btnReset.Name = "btnReset";
             btnReset.Size = new Size(118, 40);
-            btnReset.TabIndex = 0;
+            btnReset.TabIndex = 4;
             btnReset.Text = "Clear Form";
             btnReset.UseVisualStyleBackColor = true;
             btnReset.Click += btnReset_Click_1;
@@ -652,7 +655,7 @@ namespace SOFA_Generator
             picturebutton.Location = new Point(6, 16);
             picturebutton.Name = "picturebutton";
             picturebutton.Size = new Size(293, 40);
-            picturebutton.TabIndex = 64;
+            picturebutton.TabIndex = 29;
             picturebutton.Text = "Take Picture";
             picturebutton.UseVisualStyleBackColor = true;
             picturebutton.Click += picturebutton_Click;
@@ -666,7 +669,6 @@ namespace SOFA_Generator
             signaturegroupBox.Size = new Size(305, 339);
             signaturegroupBox.TabIndex = 65;
             signaturegroupBox.TabStop = false;
-            signaturegroupBox.Enter += groupBox3_Enter;
             // 
             // picturegroupBox
             // 

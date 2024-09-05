@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35219.272
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SOFA_Generator", "SOFA_Generator.csproj", "{AB7B2599-0380-4B5B-BC3F-5CA1FFBFAEBA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SOFA_King", "SOFA_King.csproj", "{AB7B2599-0380-4B5B-BC3F-5CA1FFBFAEBA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
