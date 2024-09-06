@@ -20,6 +20,7 @@ using Topaz;
 using PdfImage = iText.Layout.Element.Image;
 using DrawingImage = System.Drawing.Image;
 using iText.Layout.Properties;
+using iText.Kernel.Pdf.Canvas;
 
 namespace SOFA_Generator
 {
@@ -42,6 +43,7 @@ namespace SOFA_Generator
             btnSearch.Click += new EventHandler(this.btnSearch_Click);
             statusComboBox.SelectedIndexChanged += new EventHandler(this.statusComboBox_SelectedIndexChanged);
             btnReset.Click += new EventHandler(this.btnReset_Click);
+            InitializeStampComboBox();
             sigPlusNET1.SetTabletState(1);
             sigPlusNET1.SetJustifyMode(0);
             InitializeUnitComboBox();
@@ -85,6 +87,7 @@ namespace SOFA_Generator
             sigPlusNET1.Visible = false;
             signaturegroupBox.Visible = false;
             picturegroupBox.Visible = false;
+            stampComboBox.Visible = false;
 
             // Also hide labels
             sexLabel.Visible = false;
@@ -103,6 +106,7 @@ namespace SOFA_Generator
             remarksLabel.Visible = false;
             catLabel.Visible = false;
             issuerLabel.Visible = false;
+            stampLabel.Visible = false;
         }
 
         private void statusComboBox_SelectedIndexChanged(object? sender, EventArgs e)
@@ -137,56 +141,54 @@ namespace SOFA_Generator
 
         private void InitializeUnitComboBox()
         {
-            unitComboBox.Items.Clear();
-            unitComboBox.Items.Add("18 WG"); // Header
-            // Add 18 OG and its units
-            unitComboBox.Items.Add("   18 OG"); // Header
-            unitComboBox.Items.Add("      18 AES");
-            unitComboBox.Items.Add("      18 OSS");
-            unitComboBox.Items.Add("      44 FS");
-            unitComboBox.Items.Add("      67 FS");
-            unitComboBox.Items.Add("      31 RQS");
-            unitComboBox.Items.Add("      33 RQS");
-            unitComboBox.Items.Add("      909 ARS");
-            unitComboBox.Items.Add("      961 AACS");
-            unitComboBox.Items.Add("      623 ACS");
-            unitComboBox.Items.Add("      319 ERS");
-            unitComboBox.Items.Add("      19/199 EFS");
-            unitComboBox.Items.Add("      179 EFS");
-            unitComboBox.Items.Add("      199 FGS");
-            unitComboBox.Items.Add("      27 EFS");
-            unitComboBox.Items.Add("      27 FGS");
+            // Ensure the Excel file path is set
+            if (string.IsNullOrEmpty(excelFilePath))
+            {
+                MessageBox.Show("Please select an Excel file first.");
+                return;
+            }
 
-            // Add 18 CEG and its units
-            unitComboBox.Items.Add("   18 CEG"); // Header
-            unitComboBox.Items.Add("      18 CES");
-            unitComboBox.Items.Add("      718 CES");
+            FileInfo fileInfo = new FileInfo(excelFilePath);
 
-            // Add 18 MXG and its units
-            unitComboBox.Items.Add("   18 MXG"); // Header
-            unitComboBox.Items.Add("      18 AMXS");
-            unitComboBox.Items.Add("      718 AMXS");
-            unitComboBox.Items.Add("      18 CMS");
-            unitComboBox.Items.Add("      18 EMS");
-            unitComboBox.Items.Add("      18 MUNS");
+            try
+            {
+                using (ExcelPackage package = new ExcelPackage(fileInfo))
+                {
+                    // Get the "Defenders" worksheet
+                    ExcelWorksheet defendersSheet = package.Workbook.Worksheets["Defenders"];
 
-            // Add 18 MSG and its units
-            unitComboBox.Items.Add("   18 MSG"); // Header
-            unitComboBox.Items.Add("      18 SFS");
-            unitComboBox.Items.Add("      718 FSS");
-            unitComboBox.Items.Add("      18 LRS");
-            unitComboBox.Items.Add("      Det 1, Okuma");
-            unitComboBox.Items.Add("      18 CS");
-            unitComboBox.Items.Add("      18 FSS");
-            unitComboBox.Items.Add("      18 CONS");
-            unitComboBox.Items.Add("      Det 2, Bellows");
+                    if (defendersSheet == null)
+                    {
+                        MessageBox.Show("The 'Defenders' sheet was not found in the Excel file.");
+                        return;
+                    }
 
-            // Add 18 MDG and its units
-            unitComboBox.Items.Add("   18 MDG"); // Header
-            unitComboBox.Items.Add("      18 OMRS");
-            unitComboBox.Items.Add("      18 DS");
-            unitComboBox.Items.Add("      18 HCOS");
-            unitComboBox.Items.Add("      18 HDSS");
+                    // Clear the existing items in the ComboBox
+                    unitComboBox.Items.Clear();
+
+                    // Iterate through the rows in the Defenders sheet
+                    int startRow = 2; // Assuming the first row is a header
+                    for (int row = startRow; row <= defendersSheet.Dimension.End.Row; row++)
+                    {
+                        string unitName = defendersSheet.Cells[row, 2].Text; // Column 2 for unit names
+
+                        if (!string.IsNullOrEmpty(unitName))
+                        {
+                            unitComboBox.Items.Add(unitName);
+                        }
+                    }
+
+                    // Optionally, select the first item in the ComboBox if there are items
+                    if (unitComboBox.Items.Count > 0)
+                    {
+                        unitComboBox.SelectedIndex = 0;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error loading units: {ex.Message}");
+            }
         }
 
         private void ShowFormFields(bool isExistingEntry)
@@ -215,6 +217,7 @@ namespace SOFA_Generator
             sigPlusNET1.Visible = true;
             signaturegroupBox.Visible = true;
             picturegroupBox.Visible = true;
+            stampComboBox.Visible = true;
 
             // Show labels
             sexLabel.Visible = true;
@@ -232,6 +235,7 @@ namespace SOFA_Generator
             remarksLabel.Visible = true;
             unitLabel.Visible = true;
             issuerLabel.Visible = true;
+            stampLabel.Visible = true;
 
             // Show Permit 1 GroupBox since it's used for both new and existing entries
             groupBox1.Visible = true;
@@ -278,6 +282,13 @@ namespace SOFA_Generator
             restrictionsBox.Checked = false;
         }
 
+        private void InitializeStampComboBox()
+        {
+            stampComboBox.Items.Clear();
+            stampComboBox.Items.AddRange(new object[] { "", "Student Driver", "On Base Only", "TDY", "Limited" });
+            stampComboBox.SelectedIndex = 0;  // Optional: Set default value
+
+        }
 
         private void btnSearch_Click(object? sender, EventArgs e)
         {
@@ -352,7 +363,8 @@ namespace SOFA_Generator
                 { "HairColor", worksheet.Cells[rowIndex, 19].Text },
                 { "EyeColor", worksheet.Cells[rowIndex, 20].Text },
                 { "GlassesContacts", worksheet.Cells[rowIndex, 21].Text },
-                { "Remarks", worksheet.Cells[rowIndex, 22].Text } 
+                { "Remarks", worksheet.Cells[rowIndex, 22].Text },
+                { "Stamp", worksheet.Cells[rowIndex, 23].Text }  // Column 23 for "Stamp"
             };
                     return data;
                 }
@@ -441,6 +453,10 @@ namespace SOFA_Generator
             string sex = data["Sex"].Trim();
             sexComboBox.SelectedItem = sexComboBox.Items.Cast<string>().FirstOrDefault(item => item == sex);
 
+            // Populate Stamp from the Excel file (column 23)
+            string stamp = data["Stamp"].Trim();
+            stampComboBox.SelectedItem = stampComboBox.Items.Cast<string>().FirstOrDefault(item => item == stamp);
+
             // Automatically check "Auto/Jeep" because it's implied when customer data is found
             int autoJeepIndex = checkedListBox1.Items.IndexOf("Auto/Jeep");
             if (autoJeepIndex >= 0)
@@ -471,16 +487,6 @@ namespace SOFA_Generator
                     {
                         catPaxComboBox.SelectedItem = matchingItem;
                     }
-                    else
-                    {
-                        // Debugging assistance
-                        MessageBox.Show($"CAT/PAX value '{catPaxValue}' not found in ComboBox items.", "Debug Info", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    }
-                }
-                else
-                {
-                    // Debugging assistance
-                    MessageBox.Show("Motorcycle not found in checkedListBox1 items.", "Debug Info", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
 
@@ -596,6 +602,7 @@ namespace SOFA_Generator
             eyeColorComboBox.SelectedIndex = -1;
             sexComboBox.SelectedIndex = -1;
             remarksBox.Clear();
+            stampComboBox.SelectedIndex = -1;
             restrictionsBox.Checked = false;
             sigPlusNET1.ClearTablet();
 
@@ -685,10 +692,11 @@ namespace SOFA_Generator
                         { "Last Name", lastNameTextBox.Text },  // For Excel
                         { "First Name", firstNameTextBox.Text },  // For Excel
                         { "DoD ID #", dodIdTextBox.Text },
-                        { "Status", statusComboBox.SelectedItem?.ToString() ?? "" },  // Only for Excel
-                        { "Rank", GetSelectedRank() },  // Only for Excel
-                        { "UNIT", unitValue ?? "" },  // Trimmed unit for PDF
-                        { "Unit", unitValue ?? "" },  // For Excel (5th column)
+                        { "Status", statusComboBox.SelectedItem?.ToString() ?? "" },
+                        { "Stamp", stampComboBox.SelectedItem?.ToString() ?? "" },
+                        { "Rank", GetSelectedRank() },
+                        { "UNIT", unitValue ?? "" },
+                        { "Unit", unitValue ?? "" },
                         { "ISSUE", issue1DateTimePicker.Value.ToShortDateString() },
                         { "Exp", exp1DateTimePicker.Value.ToShortDateString() },
                         { "SEX", sexComboBox.SelectedItem?.ToString() ?? "" },
@@ -781,16 +789,20 @@ namespace SOFA_Generator
             }
         }
 
-        private string MapCatPaxToDescription(string catPax)
+        private void InitializeCatPaxComboBox()
         {
-            return catPax switch
+            catPaxComboBox.Items.Clear();
+            catPaxComboBox.Items.Add("Cat 1: Up to 50cc");
+            catPaxComboBox.Items.Add("Cat 2: Over 50cc up to 125cc");
+            catPaxComboBox.Items.Add("Cat 3: Over 125cc up to 400cc");
+            catPaxComboBox.Items.Add("Cat 4: Over 400cc up to 750cc");
+            catPaxComboBox.Items.Add("Cat 5: Over 750cc");
+
+            // Optionally, select the first item as default
+            if (catPaxComboBox.Items.Count > 0)
             {
-                "Category 1" => "Cat 1: Up to 50cc",
-                "Category 2" => "Cat 2: Over 50cc up to 125cc",
-                "Category 3" => "Cat 3: Over 125cc up to 400cc",
-                "Category 4" => "Cat 4: 400cc and Over",
-                _ => catPax // Return the original value if no match is found
-            };
+                catPaxComboBox.SelectedIndex = 0;
+            }
         }
 
         private void SaveDataToExcel(Dictionary<string, string> data)
@@ -808,6 +820,7 @@ namespace SOFA_Generator
                 using (ExcelPackage package = new ExcelPackage(fileInfo))
                 {
                     ExcelWorksheet worksheet = package.Workbook.Worksheets[0];
+
                     // Ensure the worksheet has data
                     if (worksheet.Dimension == null || worksheet.Dimension.End.Row == 0)
                     {
@@ -816,6 +829,7 @@ namespace SOFA_Generator
                     }
 
                     int rowIndex = -1;
+
                     // Search for the row by matching the "DoD ID #" field
                     for (int i = 2; i <= worksheet.Dimension.End.Row; i++)  // Assuming row 1 is headers
                     {
@@ -832,33 +846,19 @@ namespace SOFA_Generator
                         rowIndex = worksheet.Dimension.End.Row + 1;
                     }
 
-                    // **Add permit data logic with debug messages**
-                    if (string.IsNullOrEmpty(worksheet.Cells[rowIndex, 7].Text))  // Column 7 is "Permit #1"
-                    {
-                        worksheet.Cells[rowIndex, 7].Value = data["PERMIT"];   // Permit #1
-                        worksheet.Cells[rowIndex, 8].Value = data["ISSUE"];    // Issue 1
-                        worksheet.Cells[rowIndex, 9].Value = data["Exp"];      // Exp 1
-                    }
-                    else if (string.IsNullOrEmpty(worksheet.Cells[rowIndex, 10].Text))  // Column 10 is "Permit #2"
-                    {
-                        worksheet.Cells[rowIndex, 10].Value = data["PERMIT"];  // Permit #2
-                        worksheet.Cells[rowIndex, 11].Value = data["ISSUE"];   // Issue 2
-                        worksheet.Cells[rowIndex, 12].Value = data["Exp"];     // Exp 2
-                    }
-                    else
-                    {
-                        worksheet.Cells[rowIndex, 10].Value = data["PERMIT"];  // Permit #2
-                        worksheet.Cells[rowIndex, 11].Value = data["ISSUE"];   // Issue 2
-                        worksheet.Cells[rowIndex, 12].Value = data["Exp"];     // Exp 2
-                    }
-
-                    // **Write other fields**
+                    // **Write data to the Excel file**
                     worksheet.Cells[rowIndex, 1].Value = data["Last Name"];
                     worksheet.Cells[rowIndex, 2].Value = data["First Name"];
                     worksheet.Cells[rowIndex, 3].Value = data["Status"];
                     worksheet.Cells[rowIndex, 4].Value = data["Rank"];
                     worksheet.Cells[rowIndex, 5].Value = data["Unit"];
                     worksheet.Cells[rowIndex, 6].Value = data["DoD ID #"];
+                    worksheet.Cells[rowIndex, 7].Value = data["PERMIT"];   // Permit #1
+                    worksheet.Cells[rowIndex, 8].Value = data["ISSUE"];    // Issue 1
+                    worksheet.Cells[rowIndex, 9].Value = data["Exp"];      // Exp 1
+                    worksheet.Cells[rowIndex, 10].Value = data["PERMIT"];  // Permit #2
+                    worksheet.Cells[rowIndex, 11].Value = data["ISSUE"];   // Issue 2
+                    worksheet.Cells[rowIndex, 12].Value = data["Exp"];     // Exp 2
                     worksheet.Cells[rowIndex, 13].Value = data["MSF"];
                     worksheet.Cells[rowIndex, 14].Value = data["CAT/PAX"];
                     worksheet.Cells[rowIndex, 15].Value = data["SEX"];
@@ -869,6 +869,7 @@ namespace SOFA_Generator
                     worksheet.Cells[rowIndex, 20].Value = data["EYECOLOR"];
                     worksheet.Cells[rowIndex, 21].Value = data["GLASSES/CONTACTS"];
                     worksheet.Cells[rowIndex, 22].Value = data["Remarks"];
+                    worksheet.Cells[rowIndex, 23].Value = data["Stamp"];  // Write "Stamp" in column 23
 
                     // Save the Excel file
                     package.Save();
@@ -1080,10 +1081,15 @@ namespace SOFA_Generator
                     form.GetField("GLASSES/CONTACTS")?.SetValue(formData["GLASSES/CONTACTS"]);
 
                     // Use the mapped description for CAT/PAX in the PDF
-                    string catPaxDescription = MapCatPaxToDescription(formData["CAT/PAX"]);
-                    form.GetField("CAT/PAX")?.SetValue(catPaxDescription); // Use the description for PDF
+                    string catPaxDescription = formData["CAT/PAX"];
+                    form.GetField("CAT/PAX")?.SetValue(catPaxDescription);
 
                     form.GetField("Remarks")?.SetValue(formData["Remarks"]);
+                    form.GetField("Stamp")?.SetValue(formData["Stamp"]);
+
+                    // Insert the corresponding stamp image based on the stampComboBox selection
+                    string stampSelection = stampComboBox.SelectedItem?.ToString() ?? "";
+                    InsertStampImage(form, stampSelection, pdfDoc);
 
                     // Flatten the form
                     form.FlattenFields();
@@ -1103,23 +1109,23 @@ namespace SOFA_Generator
                             // Stretch the signature to fit the field
                             img.SetAutoScale(false);
                             img.ScaleAbsolute(rect.GetWidth(), rect.GetHeight());
-
                             img.SetFixedPosition(rect.GetLeft(), rect.GetBottom());
 
                             var canvas = new Canvas(pdfDoc.GetPage(1), rect);
                             canvas.Add(img);
+                            canvas.Close();
                         }
                         else
                         {
                             MessageBox.Show("Signature image field not found in the PDF.");
                         }
                     }
-
                 }
 
                 // Step 4: Confirm the PDF was created
                 if (File.Exists(outputPdfPath))
                 {
+                    MessageBox.Show($"PDF generated successfully at {outputPdfPath}");
                 }
                 else
                 {
@@ -1131,6 +1137,77 @@ namespace SOFA_Generator
                 MessageBox.Show($"Error: {ex.Message}\nStack Trace: {ex.StackTrace}");
             }
         }
+
+        private void InsertStampImage(PdfAcroForm form, string stampSelection, PdfDocument pdfDoc)
+        {
+            string imagePath = null;
+
+            // Determine the path of the image based on the selected stamp option
+            switch (stampSelection)
+            {
+                case "Limited":
+                    imagePath = @"D:\Users\shane\SOFA King\LIMITED.png"; // Update with correct path
+                    break;
+                case "On Base Only":
+                    imagePath = @"D:\Users\shane\SOFA King\ON_BASE.png";
+                    break;
+                case "TDY":
+                    imagePath = @"D:\Users\shane\SOFA King\TDY.png";
+                    break;
+                case "Student Driver":
+                    imagePath = @"D:\Users\shane\SOFA King\STUDENT_DRIVER.png";
+                    break;
+                case "":
+                    // No stamp selected, return early
+                    return;
+            }
+
+            if (File.Exists(imagePath))
+            {
+                try
+                {
+                    // Load the image
+                    ImageData imgData = ImageDataFactory.Create(imagePath);
+                    PdfImage img = new PdfImage(imgData);
+
+                    // Get the stamp field in the PDF
+                    PdfFormField stampField = form.GetField("Image1_af_image");
+                    if (stampField != null)
+                    {
+                        var widget = stampField.GetWidgets()[0];
+                        var rect = widget.GetRectangle().ToRectangle();
+
+                        // Stretch the image to fit the field dimensions
+                        img.SetAutoScale(false);
+                        img.ScaleAbsolute(rect.GetWidth(), rect.GetHeight());
+
+                        // Set the image's position on the page
+                        img.SetFixedPosition(rect.GetLeft(), rect.GetBottom());
+
+                        // Add the image to the canvas
+                        var canvas = new Canvas(pdfDoc.GetPage(1), pdfDoc.GetPage(1).GetPageSize());
+                        canvas.Add(img);
+                        canvas.Close();  // Ensure the canvas is finalized
+
+                        // Optionally, remove or hide the original field if necessary
+                        form.RemoveField("Image1_af_image");
+                    }
+                    else
+                    {
+                        MessageBox.Show("Stamp image field 'Image1_af_image' not found in the PDF.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error inserting stamp image: {ex.Message}");
+                }
+            }
+            else
+            {
+                MessageBox.Show($"Stamp image not found at {imagePath}");
+            }
+        }
+
         private void btnGeneratePdf_Click(object sender, EventArgs e)
         {
             // Define paths for the template PDF, output PDF, and signature image
