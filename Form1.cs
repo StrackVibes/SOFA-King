@@ -671,9 +671,6 @@ namespace SOFA_Generator
                     string filePath = Path.Combine(Path.GetTempPath(), "signatureCapture.jpg");
                     bitmap.Save(filePath, ImageFormat.Jpeg);
 
-                    // Debug message to confirm the signature was saved
-                    MessageBox.Show($"Signature saved successfully at {filePath}!");
-
                     // Step 2: Set the paths for the PDF
                     string pdfTemplatePath = @"D:\Users\shane\SOFA King\Form4EJ.pdf";
                     string outputPdfPath = @"D:\Users\shane\SOFA King\Form4EJ_Filled.pdf";
@@ -683,36 +680,46 @@ namespace SOFA_Generator
 
                     // Step 4: Prepare form data
                     var formData = new Dictionary<string, string>
-            {
-                { "NAME", lastNameTextBox.Text + ", " + firstNameTextBox.Text },  // For PDF
-                { "Last Name", lastNameTextBox.Text },  // For Excel
-                { "First Name", firstNameTextBox.Text },  // For Excel
-                { "DoD ID #", dodIdTextBox.Text },
-                { "Status", statusComboBox.SelectedItem?.ToString() ?? "" },  // Only for Excel
-                { "Rank", GetSelectedRank() },  // Only for Excel
-                { "UNIT", unitValue ?? "" },  // Trimmed unit for PDF
-                { "Unit", unitValue ?? "" },  // For Excel (5th column)
-                { "ISSUE", issue1DateTimePicker.Value.ToShortDateString() },
-                { "Exp", exp1DateTimePicker.Value.ToShortDateString() },
-                { "SEX", sexComboBox.SelectedItem?.ToString() ?? "" },
-                { "DOB", dobDateTimePicker.Value.ToShortDateString() },
-                { "HEIGHT", heightTextBox.Text },
-                { "WEIGHT", weightTextBox.Text },
-                { "HAIRCOLOR", hairColorComboBox.SelectedItem?.ToString() ?? "" },
-                { "EYECOLOR", eyeColorComboBox.SelectedItem?.ToString() ?? "" },
-                { "ISSUER", issuerComboBox.SelectedItem?.ToString() ?? "" },
-                { "AUTO/JEEP", checkedListBox1.CheckedItems.Contains("Auto/Jeep") ? "True" : "False" },
-                { "MOTORCYCLE", checkedListBox1.CheckedItems.Contains("Motorcycle") ? "True" : "False" },
-                { "GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "No" },
-                { "CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? "" },
-                { "Remarks", remarksBox.Text }
-            };
+                    {
+                        { "NAME", lastNameTextBox.Text + ", " + firstNameTextBox.Text },  // For PDF
+                        { "Last Name", lastNameTextBox.Text },  // For Excel
+                        { "First Name", firstNameTextBox.Text },  // For Excel
+                        { "DoD ID #", dodIdTextBox.Text },
+                        { "Status", statusComboBox.SelectedItem?.ToString() ?? "" },  // Only for Excel
+                        { "Rank", GetSelectedRank() },  // Only for Excel
+                        { "UNIT", unitValue ?? "" },  // Trimmed unit for PDF
+                        { "Unit", unitValue ?? "" },  // For Excel (5th column)
+                        { "ISSUE", issue1DateTimePicker.Value.ToShortDateString() },
+                        { "Exp", exp1DateTimePicker.Value.ToShortDateString() },
+                        { "SEX", sexComboBox.SelectedItem?.ToString() ?? "" },
+                        { "DOB", dobDateTimePicker.Value.ToShortDateString() },
+                        { "HEIGHT", heightTextBox.Text },
+                        { "WEIGHT", weightTextBox.Text },
+                        { "HAIRCOLOR", hairColorComboBox.SelectedItem?.ToString() ?? "" },
+                        { "EYECOLOR", eyeColorComboBox.SelectedItem?.ToString() ?? "" },
+                        { "ISSUER", issuerComboBox.SelectedItem?.ToString() ?? "" },
+                        { "AUTO/JEEP", checkedListBox1.CheckedItems.Contains("Auto/Jeep") ? "True" : "False" },
+                        { "MOTORCYCLE", checkedListBox1.CheckedItems.Contains("Motorcycle") ? "True" : "False" },
+                        { "GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "No" },
+                        { "CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? "" },
+                        { "Remarks", remarksBox.Text },
+                        { "MSF", MSFcheckBox.Checked ? "True" : "False" }  // <--- Make sure MSF is included here
+                    };
+
 
                     // Step 5: Decide where to save the permit (Permit #1 or Permit #2)
                     FileInfo fileInfo = new FileInfo(excelFilePath);
                     using (ExcelPackage package = new ExcelPackage(fileInfo))
                     {
                         ExcelWorksheet worksheet = package.Workbook.Worksheets[0];
+
+                        // Check if the worksheet is empty
+                        if (worksheet.Dimension == null || worksheet.Dimension.End.Row == 0)
+                        {
+                            MessageBox.Show("The worksheet is empty or not properly loaded.");
+                            return;
+                        }
+
                         int rowIndex = -1;
 
                         // Find row by DoD ID
@@ -723,6 +730,20 @@ namespace SOFA_Generator
                                 rowIndex = i;
                                 break;
                             }
+                        }
+
+                        // Check if rowIndex was found
+                        if (rowIndex == -1)
+                        {
+                            MessageBox.Show("No matching DoD ID found. Creating a new row.");
+                            rowIndex = worksheet.Dimension.End.Row + 1;
+                        }
+
+                        // Ensure rowIndex is within valid range
+                        if (rowIndex <= 0 || rowIndex > worksheet.Dimension.End.Row + 1)
+                        {
+                            MessageBox.Show($"Row index {rowIndex} is out of range.");
+                            return;
                         }
 
                         // Check if Permit #1 is already filled for this user
@@ -782,74 +803,81 @@ namespace SOFA_Generator
                 return;
             }
 
-            using (ExcelPackage package = new ExcelPackage(fileInfo))
+            try
             {
-                ExcelWorksheet worksheet = package.Workbook.Worksheets[0];
-                int rowIndex = -1;
-
-                // Search for the row by matching the "DoD ID #"
-                for (int i = 2; i <= worksheet.Dimension.End.Row; i++)
+                using (ExcelPackage package = new ExcelPackage(fileInfo))
                 {
-                    if (worksheet.Cells[i, 6].Text == data["DoD ID #"])  // Column 6 for "DoD ID #"
+                    ExcelWorksheet worksheet = package.Workbook.Worksheets[0];
+                    // Ensure the worksheet has data
+                    if (worksheet.Dimension == null || worksheet.Dimension.End.Row == 0)
                     {
-                        rowIndex = i;
-                        break;
+                        MessageBox.Show("The Excel sheet is empty or has no header row.");
+                        return;
                     }
-                }
 
-                // If no row is found, add a new row
-                if (rowIndex == -1)
-                {
-                    rowIndex = worksheet.Dimension.End.Row + 1;  // Add new row for first-time entry
-
-                    // Write new Permit #1 details (first-time permit)
-                    worksheet.Cells[rowIndex, 7].Value = data["PERMIT"];  // Permit #1
-                    worksheet.Cells[rowIndex, 8].Value = data["ISSUE"];   // Issue 1
-                    worksheet.Cells[rowIndex, 9].Value = data["Exp"];     // Exp 1
-                }
-                else
-                {
-                    // Check if Permit #1 is already filled
-                    string existingPermit1 = worksheet.Cells[rowIndex, 7].Text;
-
-                    if (string.IsNullOrEmpty(existingPermit1))
+                    int rowIndex = -1;
+                    // Search for the row by matching the "DoD ID #" field
+                    for (int i = 2; i <= worksheet.Dimension.End.Row; i++)  // Assuming row 1 is headers
                     {
-                        // If Permit #1 is empty, save to Permit #1
-                        worksheet.Cells[rowIndex, 7].Value = data["PERMIT"];  // Permit #1
-                        worksheet.Cells[rowIndex, 8].Value = data["ISSUE"];   // Issue 1
-                        worksheet.Cells[rowIndex, 9].Value = data["Exp"];     // Exp 1
+                        if (worksheet.Cells[i, 6].Text == data["DoD ID #"])  // Column 6 for "DoD ID #"
+                        {
+                            rowIndex = i;
+                            break;
+                        }
                     }
-                    else
+
+                    // If not found, add a new row
+                    if (rowIndex == -1)
                     {
-                        // If Permit #1 is filled, save to or overwrite Permit #2
+                        rowIndex = worksheet.Dimension.End.Row + 1;
+                    }
+
+                    // **Add permit data logic with debug messages**
+                    if (string.IsNullOrEmpty(worksheet.Cells[rowIndex, 7].Text))  // Column 7 is "Permit #1"
+                    {
+                        worksheet.Cells[rowIndex, 7].Value = data["PERMIT"];   // Permit #1
+                        worksheet.Cells[rowIndex, 8].Value = data["ISSUE"];    // Issue 1
+                        worksheet.Cells[rowIndex, 9].Value = data["Exp"];      // Exp 1
+                    }
+                    else if (string.IsNullOrEmpty(worksheet.Cells[rowIndex, 10].Text))  // Column 10 is "Permit #2"
+                    {
                         worksheet.Cells[rowIndex, 10].Value = data["PERMIT"];  // Permit #2
                         worksheet.Cells[rowIndex, 11].Value = data["ISSUE"];   // Issue 2
                         worksheet.Cells[rowIndex, 12].Value = data["Exp"];     // Exp 2
                     }
+                    else
+                    {
+                        worksheet.Cells[rowIndex, 10].Value = data["PERMIT"];  // Permit #2
+                        worksheet.Cells[rowIndex, 11].Value = data["ISSUE"];   // Issue 2
+                        worksheet.Cells[rowIndex, 12].Value = data["Exp"];     // Exp 2
+                    }
+
+                    // **Write other fields**
+                    worksheet.Cells[rowIndex, 1].Value = data["Last Name"];
+                    worksheet.Cells[rowIndex, 2].Value = data["First Name"];
+                    worksheet.Cells[rowIndex, 3].Value = data["Status"];
+                    worksheet.Cells[rowIndex, 4].Value = data["Rank"];
+                    worksheet.Cells[rowIndex, 5].Value = data["Unit"];
+                    worksheet.Cells[rowIndex, 6].Value = data["DoD ID #"];
+                    worksheet.Cells[rowIndex, 13].Value = data["MSF"];
+                    worksheet.Cells[rowIndex, 14].Value = data["CAT/PAX"];
+                    worksheet.Cells[rowIndex, 15].Value = data["SEX"];
+                    worksheet.Cells[rowIndex, 16].Value = data["DOB"];
+                    worksheet.Cells[rowIndex, 17].Value = data["HEIGHT"];
+                    worksheet.Cells[rowIndex, 18].Value = data["WEIGHT"];
+                    worksheet.Cells[rowIndex, 19].Value = data["HAIRCOLOR"];
+                    worksheet.Cells[rowIndex, 20].Value = data["EYECOLOR"];
+                    worksheet.Cells[rowIndex, 21].Value = data["GLASSES/CONTACTS"];
+                    worksheet.Cells[rowIndex, 22].Value = data["Remarks"];
+
+                    // Save the Excel file
+                    package.Save();
                 }
-
-                // Write other fields (common fields) such as Last Name, First Name, etc.
-                worksheet.Cells[rowIndex, 1].Value = data["Last Name"];
-                worksheet.Cells[rowIndex, 2].Value = data["First Name"];
-                worksheet.Cells[rowIndex, 3].Value = data["Status"];
-                worksheet.Cells[rowIndex, 4].Value = data["Rank"];
-                worksheet.Cells[rowIndex, 5].Value = data["Unit"];
-                worksheet.Cells[rowIndex, 6].Value = data["DoD ID #"];
-                worksheet.Cells[rowIndex, 14].Value = data["CAT/PAX"];
-                worksheet.Cells[rowIndex, 15].Value = data["SEX"];
-                worksheet.Cells[rowIndex, 16].Value = data["DOB"];
-                worksheet.Cells[rowIndex, 17].Value = data["HEIGHT"];
-                worksheet.Cells[rowIndex, 18].Value = data["WEIGHT"];
-                worksheet.Cells[rowIndex, 19].Value = data["HAIRCOLOR"];
-                worksheet.Cells[rowIndex, 20].Value = data["EYECOLOR"];
-                worksheet.Cells[rowIndex, 21].Value = data["GLASSES/CONTACTS"];
-                worksheet.Cells[rowIndex, 22].Value = data["Remarks"];
-
-                // Save the Excel file
-                package.Save();
             }
-
-            MessageBox.Show("Data saved successfully!");
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error: {ex.Message}\nStack Trace: {ex.StackTrace}");
+            }
         }
         private string GetSelectedRank()
         {
@@ -980,9 +1008,6 @@ namespace SOFA_Generator
                     var widget = signatureField.GetWidgets()[0];
                     var rect = widget.GetRectangle().ToRectangle();
 
-                    // Log the rectangle size and position for debugging
-                    MessageBox.Show($"Signature field size: {rect.GetWidth()}x{rect.GetHeight()}, Position: ({rect.GetLeft()}, {rect.GetBottom()})");
-
                     // Adjust image size to fit the signature field
                     img.SetAutoScale(false);
                     img.ScaleAbsolute(rect.GetWidth(), rect.GetHeight());
@@ -1007,12 +1032,6 @@ namespace SOFA_Generator
                 return false;
             }
         }
-        private void SaveAndFlattenPdf(PdfAcroForm form, PdfDocument pdfDoc)
-        {
-            form.FlattenFields();
-            pdfDoc.Close();
-            MessageBox.Show("PDF flattened and saved.");
-        }
 
         public void CompletePdfWorkflow(string pdfTemplatePath, string outputPdfPath, Dictionary<string, string> formData, string signatureImagePath)
         {
@@ -1026,9 +1045,10 @@ namespace SOFA_Generator
                 }
 
                 // Step 2: Ensure the output directory exists
-                string outputDir = Path.GetDirectoryName(outputPdfPath) ?? string.Empty;
-                if (!string.IsNullOrEmpty(outputDir) && !Directory.Exists(outputDir))
+                string outputDir = Path.GetDirectoryName(outputPdfPath);
+                if (!Directory.Exists(outputDir))
                 {
+                    MessageBox.Show($"Creating output directory: {outputDir}");
                     Directory.CreateDirectory(outputDir);
                 }
 
@@ -1039,7 +1059,7 @@ namespace SOFA_Generator
                 {
                     PdfAcroForm form = PdfAcroForm.GetAcroForm(pdfDoc, true);
 
-                    // Step 4: Fill out form fields
+                    // Fill the form fields using the available data
                     form.GetField("ISSUE")?.SetValue(formData["ISSUE"]);
                     form.GetField("NAME")?.SetValue(formData["NAME"]);
                     form.GetField("ID")?.SetValue(formData["DoD ID #"]);
@@ -1053,26 +1073,53 @@ namespace SOFA_Generator
                     form.GetField("UNIT")?.SetValue(formData["UNIT"]);
                     form.GetField("ISSUER")?.SetValue(formData["ISSUER"]);
                     form.GetField("PERMIT")?.SetValue(formData["PERMIT"]);
+
+                    // Debug for MOTORCYCLE checkbox
                     form.GetField("AUTO/JEEP")?.SetValue(formData["AUTO/JEEP"] == "True" ? "Yes" : "Off");
                     form.GetField("MOTORCYCLE")?.SetValue(formData["MOTORCYCLE"] == "True" ? "Yes" : "Off");
                     form.GetField("GLASSES/CONTACTS")?.SetValue(formData["GLASSES/CONTACTS"]);
-                    form.GetField("CAT/PAX")?.SetValue(formData["CAT/PAX"]);
+
+                    // Use the mapped description for CAT/PAX in the PDF
+                    string catPaxDescription = MapCatPaxToDescription(formData["CAT/PAX"]);
+                    form.GetField("CAT/PAX")?.SetValue(catPaxDescription); // Use the description for PDF
+
                     form.GetField("Remarks")?.SetValue(formData["Remarks"]);
 
-                    // Step 5: Flatten the form fields before inserting the signature
+                    // Flatten the form
                     form.FlattenFields();
 
-                    // Step 6: Insert the signature after flattening
-                    if (!InsertSignature(form, signatureImagePath, pdfDoc))
+                    // Insert signature
+                    if (!string.IsNullOrEmpty(signatureImagePath) && File.Exists(signatureImagePath))
                     {
-                        MessageBox.Show("Signature could not be inserted.");
+                        ImageData imgData = ImageDataFactory.Create(signatureImagePath);
+                        PdfImage img = new PdfImage(imgData);
+
+                        PdfFormField signatureField = form.GetField("Image_af_image");
+                        if (signatureField != null)
+                        {
+                            var widget = signatureField.GetWidgets()[0];
+                            var rect = widget.GetRectangle().ToRectangle();
+
+                            // Stretch the signature to fit the field
+                            img.SetAutoScale(false);
+                            img.ScaleAbsolute(rect.GetWidth(), rect.GetHeight());
+
+                            img.SetFixedPosition(rect.GetLeft(), rect.GetBottom());
+
+                            var canvas = new Canvas(pdfDoc.GetPage(1), rect);
+                            canvas.Add(img);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Signature image field not found in the PDF.");
+                        }
                     }
+
                 }
 
-                // Step 7: Confirm the PDF was created
+                // Step 4: Confirm the PDF was created
                 if (File.Exists(outputPdfPath))
                 {
-                    MessageBox.Show($"PDF generated successfully at {outputPdfPath}");
                 }
                 else
                 {
@@ -1081,8 +1128,7 @@ namespace SOFA_Generator
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An error occurred while processing the PDF: {ex.Message}");
-                Console.WriteLine($"Exception: {ex.Message}\nStack Trace: {ex.StackTrace}");
+                MessageBox.Show($"Error: {ex.Message}\nStack Trace: {ex.StackTrace}");
             }
         }
         private void btnGeneratePdf_Click(object sender, EventArgs e)
@@ -1120,72 +1166,6 @@ namespace SOFA_Generator
             CompletePdfWorkflow(pdfTemplatePath, outputPdfPath, formData, signatureImagePath);
         }
 
-
-        private void btnConfirmSignature_Click(object sender, EventArgs e)
-        {
-            if (sigPlusNET1.NumberOfTabletPoints() > 0)
-            {
-                sigPlusNET1.SetTabletState(0);
-
-                // Save the signature as a jpg
-                string tempFilePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + "_signature.jpg");
-                sigPlusNET1.GetSigImage().Save(tempFilePath, ImageFormat.Jpeg);
-
-                MessageBox.Show("Signature captured successfully!");
-                MessageBox.Show("Signature captured successfully!");
-
-                // Set paths for the template PDF and output PDF
-                string pdfTemplatePath = @"D:\Users\shane\SOFA King\Form4EJ.pdf";
-                string outputPdfPath = @"D:\Users\shane\SOFA King\Form4EJ_Filled.pdf";
-
-                // Example form data
-                Dictionary<string, string> formData = new Dictionary<string, string>
-{
-    { "LastName", lastNameTextBox.Text },
-    { "FirstName", firstNameTextBox.Text },
-    { "DoD ID #", dodIdTextBox.Text },
-    { "Status", statusComboBox.SelectedItem?.ToString() ?? "" },
-    { "Rank", GetSelectedRank() },
-    { "Unit", unitComboBox.SelectedItem?.ToString() ?? "" },
-    { "Permit1", permit1TextBox.Text },
-    { "Issue1", issue1DateTimePicker.Value.ToShortDateString() },
-    { "Exp1", exp1DateTimePicker.Value.ToShortDateString() },
-    { "Permit2", permit2TextBox.Text },  // Only if applicable
-    { "Issue2", issue2DateTimePicker.Value.ToShortDateString() },
-    { "Exp2", exp2DateTimePicker.Value.ToShortDateString() },
-    { "MSF", MSFcheckBox.Checked.ToString() },
-    { "CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? "" },
-    { "Sex", sexComboBox.SelectedItem?.ToString() ?? "" },
-    { "DOB", dobDateTimePicker.Value.ToShortDateString() },
-    { "Height", heightTextBox.Text },
-    { "Weight", weightTextBox.Text },
-    { "HairColor", hairColorComboBox.SelectedItem?.ToString() ?? "" },
-    { "EyeColor", eyeColorComboBox.SelectedItem?.ToString() ?? "" },
-    { "GlassesContacts", restrictionsBox.Checked.ToString() },  // If restrictions refer to glasses/contacts
-    { "Remarks", remarksBox.Text }
-};
-
-                // Call the consolidated method to handle everything
-                CompletePdfWorkflow(pdfTemplatePath, outputPdfPath, formData, tempFilePath);
-
-                // Delete the temporary signature file
-                try
-                {
-                    if (File.Exists(tempFilePath))
-                    {
-                        File.Delete(tempFilePath);
-                    }
-                }
-                catch (IOException ex)
-                {
-                    MessageBox.Show($"Failed to delete temporary signature: {ex.Message}");
-                }
-            }
-            else
-            {
-                MessageBox.Show("No signature captured!");
-            }
-        }
         private void btnGeneratePermitNumber_Click(object sender, EventArgs e)
         {
             string nextPermitNumber = GenerateNextPermitNumber();
