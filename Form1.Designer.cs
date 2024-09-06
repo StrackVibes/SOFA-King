@@ -75,6 +75,8 @@ namespace SOFA_Generator
             picturebutton = new Button();
             signaturegroupBox = new GroupBox();
             picturegroupBox = new GroupBox();
+            stampLabel = new Label();
+            stampComboBox = new ComboBox();
             signaturePanel.SuspendLayout();
             groupBox1.SuspendLayout();
             groupBox2.SuspendLayout();
@@ -114,10 +116,10 @@ namespace SOFA_Generator
             checkedListBox1.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
             checkedListBox1.FormattingEnabled = true;
             checkedListBox1.Items.AddRange(new object[] { "Auto/Jeep", "Motorcycle" });
-            checkedListBox1.Location = new Point(172, 543);
+            checkedListBox1.Location = new Point(172, 581);
             checkedListBox1.Name = "checkedListBox1";
             checkedListBox1.Size = new Size(150, 62);
-            checkedListBox1.TabIndex = 17;
+            checkedListBox1.TabIndex = 18;
             checkedListBox1.Visible = false;
             checkedListBox1.SelectedIndexChanged += checkedListBox1_SelectedIndexChanged;
             // 
@@ -145,7 +147,7 @@ namespace SOFA_Generator
             // 
             label6.AutoSize = true;
             label6.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            label6.Location = new Point(29, 556);
+            label6.Location = new Point(29, 592);
             label6.Name = "label6";
             label6.Size = new Size(124, 28);
             label6.TabIndex = 12;
@@ -268,10 +270,10 @@ namespace SOFA_Generator
             // catPaxComboBox
             // 
             catPaxComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            catPaxComboBox.Items.AddRange(new object[] { "Category 1", "Category 2", "Category 3", "Category 4" });
-            catPaxComboBox.Location = new Point(172, 651);
+            catPaxComboBox.Items.AddRange(new object[] { "Cat 1: Up to 50cc", "Cat 2: Over 50cc up to 125cc", "Cat 3: Over 125cc up to 400cc", "Cat 4: Over 400cc up to 750cc", "Cat 5: Over 750cc" });
+            catPaxComboBox.Location = new Point(128, 677);
             catPaxComboBox.Name = "catPaxComboBox";
-            catPaxComboBox.Size = new Size(150, 28);
+            catPaxComboBox.Size = new Size(195, 28);
             catPaxComboBox.TabIndex = 19;
             catPaxComboBox.Visible = false;
             // 
@@ -478,11 +480,11 @@ namespace SOFA_Generator
             // 
             catLabel.AutoSize = true;
             catLabel.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            catLabel.Location = new Point(29, 651);
+            catLabel.Location = new Point(29, 677);
             catLabel.Name = "catLabel";
-            catLabel.Size = new Size(89, 28);
+            catLabel.Size = new Size(92, 28);
             catLabel.TabIndex = 48;
-            catLabel.Text = "CAT/PAX";
+            catLabel.Text = "Category";
             catLabel.Click += catLabel_Click;
             // 
             // MSFcheckBox
@@ -490,10 +492,10 @@ namespace SOFA_Generator
             MSFcheckBox.AutoSize = true;
             MSFcheckBox.BackgroundImageLayout = ImageLayout.Center;
             MSFcheckBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            MSFcheckBox.Location = new Point(29, 612);
+            MSFcheckBox.Location = new Point(29, 646);
             MSFcheckBox.Name = "MSFcheckBox";
             MSFcheckBox.Size = new Size(73, 32);
-            MSFcheckBox.TabIndex = 18;
+            MSFcheckBox.TabIndex = 19;
             MSFcheckBox.Text = "MSF";
             MSFcheckBox.UseVisualStyleBackColor = true;
             MSFcheckBox.CheckedChanged += checkBox1_CheckedChanged;
@@ -502,10 +504,10 @@ namespace SOFA_Generator
             // 
             restrictionsBox.AutoSize = true;
             restrictionsBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            restrictionsBox.Location = new Point(29, 505);
+            restrictionsBox.Location = new Point(29, 539);
             restrictionsBox.Name = "restrictionsBox";
             restrictionsBox.Size = new Size(181, 32);
-            restrictionsBox.TabIndex = 16;
+            restrictionsBox.TabIndex = 17;
             restrictionsBox.Text = "Glasses/Contacts";
             restrictionsBox.UseVisualStyleBackColor = true;
             restrictionsBox.CheckedChanged += restrictionsBox_CheckedChanged;
@@ -645,7 +647,7 @@ namespace SOFA_Generator
             pictureBox1.BackgroundImageLayout = ImageLayout.Stretch;
             pictureBox1.Location = new Point(6, 68);
             pictureBox1.Name = "pictureBox1";
-            pictureBox1.Size = new Size(293, 275);
+            pictureBox1.Size = new Size(293, 269);
             pictureBox1.TabIndex = 63;
             pictureBox1.TabStop = false;
             // 
@@ -680,12 +682,33 @@ namespace SOFA_Generator
             picturegroupBox.TabIndex = 66;
             picturegroupBox.TabStop = false;
             // 
+            // stampLabel
+            // 
+            stampLabel.AutoSize = true;
+            stampLabel.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            stampLabel.Location = new Point(29, 505);
+            stampLabel.Name = "stampLabel";
+            stampLabel.Size = new Size(68, 28);
+            stampLabel.TabIndex = 67;
+            stampLabel.Text = "Stamp";
+            // 
+            // stampComboBox
+            // 
+            stampComboBox.FormattingEnabled = true;
+            stampComboBox.Items.AddRange(new object[] { "", "Student Driver", "On Base Only", "TDY", "Limited" });
+            stampComboBox.Location = new Point(172, 505);
+            stampComboBox.Name = "stampComboBox";
+            stampComboBox.Size = new Size(151, 28);
+            stampComboBox.TabIndex = 16;
+            // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.LightSteelBlue;
-            ClientSize = new Size(1223, 699);
+            ClientSize = new Size(1223, 718);
+            Controls.Add(stampComboBox);
+            Controls.Add(stampLabel);
             Controls.Add(picturegroupBox);
             Controls.Add(signaturegroupBox);
             Controls.Add(btnReset);
@@ -820,5 +843,7 @@ namespace SOFA_Generator
         private Button picturebutton;
         private GroupBox signaturegroupBox;
         private GroupBox picturegroupBox;
+        private Label stampLabel;
+        private ComboBox stampComboBox;
     }
 }
