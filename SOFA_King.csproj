@@ -24,6 +24,10 @@ For inquiries, please contact Shane Strack at shane.strack@us.af.mil</Descriptio
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="publish.zip" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="3592846-crest-crown-general-item-jewellery-kings-crown_107761.ico" />
   </ItemGroup>
 
