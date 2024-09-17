@@ -29,7 +29,8 @@ namespace SOFA_Generator
         private bool isDrawing = false;
         private Point lastPoint = Point.Empty;
         private Bitmap signatureBitmap;
-        private string excelFilePath = @"D:\Users\shane\SOFA King\SOFA.xlsx";  // Default path for the Excel file
+        private string excelFilePath = @"\\lxez-fs-021v\18sfs\S 5\S-5B Pass & Registration(PA)\02-USFJ Form 4EJ\05 - Trackers\SOFA.xlsx";  // Default path for the Excel file
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
 
         public Form1()
         {
@@ -42,6 +43,7 @@ namespace SOFA_Generator
             signaturePanel.MouseUp += new MouseEventHandler(signaturePanel_MouseUp);
             btnSearch.Click += new EventHandler(this.btnSearch_Click);
             statusComboBox.SelectedIndexChanged += new EventHandler(this.statusComboBox_SelectedIndexChanged);
+            motorcycleCheckBox.CheckedChanged += motorcycleCheckBox_CheckedChanged;
             btnReset.Click += new EventHandler(this.btnReset_Click);
             InitializeStampComboBox();
             sigPlusNET1.SetTabletState(1);
@@ -70,9 +72,10 @@ namespace SOFA_Generator
             btnSaveSignature.Visible = false;
             btnRequestSignature.Visible = false;
             btnGeneratePermitNumber.Visible = false;
-            MSFcheckBox.Visible = false;
+            msfTextBox.Visible = false;
             catPaxComboBox.Visible = false;
-            checkedListBox1.Visible = false;
+            autoJeepCheckBox.Visible = false;
+            motorcycleCheckBox.Visible = false;
             dobDateTimePicker.Visible = false;
             heightTextBox.Visible = false;
             weightTextBox.Visible = false;
@@ -107,6 +110,7 @@ namespace SOFA_Generator
             catLabel.Visible = false;
             issuerLabel.Visible = false;
             stampLabel.Visible = false;
+            MSFlabel.Visible = false;
         }
 
         private void statusComboBox_SelectedIndexChanged(object? sender, EventArgs e)
@@ -257,8 +261,29 @@ namespace SOFA_Generator
             btnRequestSignature.Visible = true;
             btnGeneratePermitNumber.Visible = true;
             signaturePanel.Visible = true;
-            checkedListBox1.Visible = true;
+            autoJeepCheckBox.Visible = true;
+            motorcycleCheckBox.Visible = true;
+            msfTextBox.Visible = true;
+            UpdateMotorcycleFieldsVisibility();
         }
+
+        private void UpdateMotorcycleFieldsVisibility()
+        {
+            bool isMotorcycleSelected = motorcycleCheckBox.Checked;
+
+            msfTextBox.Visible = isMotorcycleSelected;
+            catPaxComboBox.Visible = isMotorcycleSelected;
+            catLabel.Visible = isMotorcycleSelected;
+            MSFlabel.Visible = isMotorcycleSelected;
+
+            if (!isMotorcycleSelected)
+            {
+                msfTextBox.Clear();
+                catPaxComboBox.SelectedIndex = -1; // Clear the selection when not visible
+            }
+        }
+
+
 
         private void ClearFormFields()
         {
@@ -292,27 +317,30 @@ namespace SOFA_Generator
 
         private void btnSearch_Click(object? sender, EventArgs e)
         {
-            // Capture and trim the DoD ID input
             string dodId = dodIdTextBox.Text.Trim();
 
-            // Check if DoD ID is empty
             if (string.IsNullOrEmpty(dodId))
             {
                 MessageBox.Show("Please enter a DoD ID.");
                 return;
             }
 
-            // Validate the DoD ID
             if (!IsValidDoDId(dodId))
             {
-                MessageBox.Show("Please enter a valid 10-digit DoD ID that starts at 1000000000.");
+                MessageBox.Show("Please enter a valid 10-digit DoD ID.");
                 return;
             }
 
-            // Always reset the form before populating with new data
+            // Always reset the form before populating new data
             ResetForm();
 
-            // Search for the DoD ID in the Excel file
+            // Check if the Excel file exists before searching
+            if (!File.Exists(excelFilePath))
+            {
+                MessageBox.Show("Excel file not found. Please use the 'SOFA Database' button to select the correct file.");
+                return;
+            }
+
             var customerData = GetCustomerDataFromExcel(dodId);
 
             if (customerData != null)
@@ -331,44 +359,78 @@ namespace SOFA_Generator
 
         private Dictionary<string, string> GetCustomerDataFromExcel(string dodId)
         {
-            FileInfo fileInfo = new FileInfo(excelFilePath);
-            using (ExcelPackage package = new ExcelPackage(fileInfo))
+            try
             {
-                ExcelWorksheet worksheet = package.Workbook.Worksheets[0];
-                var row = worksheet.Cells["F:F"].FirstOrDefault(c => c.Text == dodId);  // Column F for "DoD ID #"
-
-                if (row != null)
+                // Check if the file exists first
+                if (!File.Exists(excelFilePath))
                 {
-                    int rowIndex = row.Start.Row;
-                    var data = new Dictionary<string, string>
-            {
-                { "Last Name", worksheet.Cells[rowIndex, 1].Text },
-                { "First Name", worksheet.Cells[rowIndex, 2].Text },
-                { "Status", worksheet.Cells[rowIndex, 3].Text },
-                { "Rank", worksheet.Cells[rowIndex, 4].Text },
-                { "Unit", worksheet.Cells[rowIndex, 5].Text },
-                { "DoD ID #", worksheet.Cells[rowIndex, 6].Text },
-                { "Permit #1", worksheet.Cells[rowIndex, 7].Text },
-                { "Issue 1", worksheet.Cells[rowIndex, 8].Text },
-                { "Exp 1", worksheet.Cells[rowIndex, 9].Text },
-                { "Permit #2", worksheet.Cells[rowIndex, 10].Text },
-                { "Issue 2", worksheet.Cells[rowIndex, 11].Text },
-                { "Exp 2", worksheet.Cells[rowIndex, 12].Text },
-                { "MSF", worksheet.Cells[rowIndex, 13].Text },
-                { "CAT/PAX", worksheet.Cells[rowIndex, 14].Text },
-                { "Sex", worksheet.Cells[rowIndex, 15].Text },
-                { "DOB", worksheet.Cells[rowIndex, 16].Text },
-                { "Height", worksheet.Cells[rowIndex, 17].Text },
-                { "Weight", worksheet.Cells[rowIndex, 18].Text },
-                { "HairColor", worksheet.Cells[rowIndex, 19].Text },
-                { "EyeColor", worksheet.Cells[rowIndex, 20].Text },
-                { "GlassesContacts", worksheet.Cells[rowIndex, 21].Text },
-                { "Remarks", worksheet.Cells[rowIndex, 22].Text },
-                { "Stamp", worksheet.Cells[rowIndex, 23].Text }  // Column 23 for "Stamp"
-            };
-                    return data;
+                    MessageBox.Show("Excel file not found. Please select the correct file using the 'SOFA Database' button.");
+                    return null!;
+                }
+
+                FileInfo fileInfo = new FileInfo(excelFilePath);
+                using (ExcelPackage package = new ExcelPackage(fileInfo))
+                {
+                    ExcelWorksheet worksheet = package.Workbook.Worksheets[0];
+
+                    if (worksheet == null)
+                    {
+                        MessageBox.Show("The required worksheet is not available in the Excel file. Please check the file format.");
+                        return null!;
+                    }
+
+                    var row = worksheet.Cells["F:F"].FirstOrDefault(c => c.Text == dodId);  // Column F for "DoD ID #"
+
+                    if (row != null)
+                    {
+                        int rowIndex = row.Start.Row;
+                        var data = new Dictionary<string, string>
+                {
+                    { "Last Name", worksheet.Cells[rowIndex, 1].Text },
+                    { "First Name", worksheet.Cells[rowIndex, 2].Text },
+                    { "Status", worksheet.Cells[rowIndex, 3].Text },
+                    { "Rank", worksheet.Cells[rowIndex, 4].Text },
+                    { "Unit", worksheet.Cells[rowIndex, 5].Text },
+                    { "DoD ID #", worksheet.Cells[rowIndex, 6].Text },
+                    { "Permit #1", worksheet.Cells[rowIndex, 7].Text },
+                    { "Issue 1", worksheet.Cells[rowIndex, 8].Text },
+                    { "Exp 1", worksheet.Cells[rowIndex, 9].Text },
+                    { "Permit #2", worksheet.Cells[rowIndex, 10].Text },
+                    { "Issue 2", worksheet.Cells[rowIndex, 11].Text },
+                    { "Exp 2", worksheet.Cells[rowIndex, 12].Text },
+                    { "MSF", worksheet.Cells[rowIndex, 13].Text },
+                    { "CAT/PAX", worksheet.Cells[rowIndex, 14].Text },
+                    { "Sex", worksheet.Cells[rowIndex, 15].Text },
+                    { "DOB", worksheet.Cells[rowIndex, 16].Text },
+                    { "Height", worksheet.Cells[rowIndex, 17].Text },
+                    { "Weight", worksheet.Cells[rowIndex, 18].Text },
+                    { "HairColor", worksheet.Cells[rowIndex, 19].Text },
+                    { "EyeColor", worksheet.Cells[rowIndex, 20].Text },
+                    { "GlassesContacts", worksheet.Cells[rowIndex, 21].Text },
+                    { "Remarks", worksheet.Cells[rowIndex, 22].Text },
+                    { "Stamp", worksheet.Cells[rowIndex, 23].Text }  // Column 23 for "Stamp"
+                };
+                        return data;
+                    }
+                    else
+                    {
+                        MessageBox.Show("DoD ID not found in the Excel file.");
+                    }
                 }
             }
+            catch (FileNotFoundException ex)
+            {
+                MessageBox.Show($"Error: Excel file not found. {ex.Message}");
+            }
+            catch (IndexOutOfRangeException ex)
+            {
+                MessageBox.Show($"Error: Worksheet not found or index out of range. {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"An unexpected error occurred: {ex.Message}");
+            }
+
             return null!;
         }
 
@@ -410,9 +472,10 @@ namespace SOFA_Generator
             lastNameTextBox.Text = data["Last Name"];
             firstNameTextBox.Text = data["First Name"];
             dodIdTextBox.Text = data["DoD ID #"];
+
+            // Load Permit #1 and its associated fields
             permit1TextBox.Text = data["Permit #1"];
 
-            // Handle date fields with proper checks
             if (DateTime.TryParse(data["Issue 1"], out DateTime issue1Date))
             {
                 issue1DateTimePicker.Value = issue1Date;
@@ -421,6 +484,30 @@ namespace SOFA_Generator
             if (DateTime.TryParse(data["Exp 1"], out DateTime exp1Date))
             {
                 exp1DateTimePicker.Value = exp1Date;
+            }
+
+            // If Permit #2 exists, load it into the Permit #2 fields
+            if (!string.IsNullOrEmpty(data["Permit #2"]))
+            {
+                permit2TextBox.Text = data["Permit #2"];
+
+                if (DateTime.TryParse(data["Issue 2"], out DateTime issue2Date))
+                {
+                    issue2DateTimePicker.Value = issue2Date;
+                }
+
+                if (DateTime.TryParse(data["Exp 2"], out DateTime exp2Date))
+                {
+                    exp2DateTimePicker.Value = exp2Date;
+                }
+
+                // Show Permit #2 fields if data exists
+                groupBox2.Visible = true;
+            }
+            else
+            {
+                // Hide Permit #2 fields if no data is available
+                groupBox2.Visible = false;
             }
 
             // Populate Status and Rank
@@ -458,40 +545,35 @@ namespace SOFA_Generator
             stampComboBox.SelectedItem = stampComboBox.Items.Cast<string>().FirstOrDefault(item => item == stamp);
 
             // Automatically check "Auto/Jeep" because it's implied when customer data is found
-            int autoJeepIndex = checkedListBox1.Items.IndexOf("Auto/Jeep");
-            if (autoJeepIndex >= 0)
-            {
-                checkedListBox1.SetItemChecked(autoJeepIndex, true);
-            }
+            autoJeepCheckBox.Checked = true;  // Since "Auto/Jeep" is always implied
 
-            // Check if MSF is "True" and ensure Motorcycle is checked
-            if (data.ContainsKey("MSF") && data["MSF"] == "True")
+            // Check if MSF is present and populate msfTextBox accordingly
+            if (data.ContainsKey("MSF"))
             {
-                MSFcheckBox.Checked = true;
-                MSFcheckBox.Visible = true;
+                msfTextBox.Text = data["MSF"];
+                msfTextBox.Visible = true;
+                motorcycleCheckBox.Checked = true;
+                catPaxComboBox.Visible = true;
+                catLabel.Visible = true;
+                string catPaxValue = data["CAT/PAX"];
+                var matchingItem = catPaxComboBox.Items.Cast<string>().FirstOrDefault(item => item == catPaxValue);
 
-                int motorcycleIndex = checkedListBox1.Items.IndexOf("Motorcycle");
-                if (motorcycleIndex >= 0)
+                if (matchingItem != null)
                 {
-                    checkedListBox1.SetItemChecked(motorcycleIndex, true);
-
-                    // Ensure CAT/PAX field is populated and visible when Motorcycle is checked
-                    catLabel.Visible = true;
-                    catPaxComboBox.Visible = true;
-
-                    // Check if the CAT/PAX value exists in the ComboBox items
-                    string catPaxValue = data["CAT/PAX"];
-                    var matchingItem = catPaxComboBox.Items.Cast<string>().FirstOrDefault(item => item == catPaxValue);
-
-                    if (matchingItem != null)
-                    {
-                        catPaxComboBox.SelectedItem = matchingItem;
-                    }
+                    catPaxComboBox.SelectedItem = matchingItem;
                 }
             }
+            else
+            {
+                msfTextBox.Visible = false;
+                motorcycleCheckBox.Checked = false;
+                catPaxComboBox.Visible = false;
+                catLabel.Visible = false;
+            }
 
-            // Make sure the checkedListBox is visible if any vehicle is involved
-            checkedListBox1.Visible = checkedListBox1.CheckedItems.Count > 0;
+
+            autoJeepCheckBox.Visible = true;
+            motorcycleCheckBox.Visible = true;
 
             // Populate other fields like DOB, Height, Weight, etc.
             if (DateTime.TryParse(data["DOB"], out DateTime dobDate))
@@ -513,7 +595,7 @@ namespace SOFA_Generator
         {
             isDrawing = true;
             lastPoint = e.Location;
-        }   
+        }
 
         private void LoadIssuerNames()
         {
@@ -571,12 +653,13 @@ namespace SOFA_Generator
 
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    // Get the path of specified file
+                    // Get the path of the selected file
                     excelFilePath = openFileDialog.FileName;
                     MessageBox.Show($"Excel file path set to: {excelFilePath}", "File Selected", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                    // Load issuer names after selecting the file
-                    LoadIssuerNames();
+                    // Reload the units and issuers after selecting the new file
+                    InitializeUnitComboBox();  // Reload unit names from the new file
+                    LoadIssuerNames();         // Reload issuer names from the new file
                 }
             }
         }
@@ -593,7 +676,7 @@ namespace SOFA_Generator
             permit2TextBox.Clear();
             dobDateTimePicker.Value = DateTime.Today.AddYears(-16); // Default DOB to 16 years ago
             issue1DateTimePicker.Value = DateTime.Today;
-            exp1DateTimePicker.Value = DateTime.Today.AddDays(90); // Default expiry date to 90 days in the future
+            exp1DateTimePicker.Value = DateTime.Today.AddDays(90); // Default expiry date
             issue2DateTimePicker.Value = DateTime.Today;
             exp2DateTimePicker.Value = DateTime.Today.AddDays(90);
             heightTextBox.Clear();
@@ -605,8 +688,10 @@ namespace SOFA_Generator
             stampComboBox.SelectedIndex = -1;
             restrictionsBox.Checked = false;
             sigPlusNET1.ClearTablet();
+            motorcycleCheckBox.Checked = false;
+            autoJeepCheckBox.Checked = false;
 
-            // Reset all rank-related controls and make them invisible
+            // Reset rank-related controls and visibility
             militaryRankComboBox.SelectedIndex = -1;
             civilianRankComboBox.SelectedIndex = -1;
             militaryRankComboBox.Visible = false;
@@ -615,19 +700,10 @@ namespace SOFA_Generator
 
             // Reset unit and status combo boxes
             unitComboBox.SelectedIndex = -1;
-            statusComboBox.SelectedIndex = -1; // Set last to avoid triggering events prematurely
+            statusComboBox.SelectedIndex = -1;
 
-            // Clear checked items in the checkedListBox1, but don't hide it
-            foreach (int index in checkedListBox1.CheckedIndices)
-            {
-                checkedListBox1.SetItemChecked(index, false);
-            }
 
-            // Reset MSF checkbox and hide it
-            MSFcheckBox.Checked = false;
-            MSFcheckBox.Visible = false;
-
-            // Hide CAT/PAX combo box and label
+            msfTextBox.Clear();
             catPaxComboBox.SelectedIndex = -1;
             catPaxComboBox.Visible = false;
             catLabel.Visible = false;
@@ -679,49 +755,46 @@ namespace SOFA_Generator
                     bitmap.Save(filePath, ImageFormat.Jpeg);
 
                     // Step 2: Set the paths for the PDF
-                    string pdfTemplatePath = @"D:\Users\shane\SOFA King\Form4EJ.pdf";
-                    string outputPdfPath = @"D:\Users\shane\SOFA King\Form4EJ_Filled.pdf";
+                    string pdfTemplatePath = Path.Combine(baseDir, "Resources", "PDF", "Form4EJ.pdf");
+                    string outputPdfPath = Path.Combine(baseDir, "Resources", "PDF", "Form4EJ_Filled.pdf");
 
-                    // Step 3: Trim the selected unit value from the combo box to remove leading/trailing spaces
-                    string unitValue = (unitComboBox.SelectedItem?.ToString() ?? "").Trim();
+                    // Step 3: Prepare form data (for saving to both Excel and PDF)
+                    string unitValue = unitComboBox.SelectedItem?.ToString()?.Trim() ?? "";
 
-                    // Step 4: Prepare form data
                     var formData = new Dictionary<string, string>
-                    {
-                        { "NAME", lastNameTextBox.Text + ", " + firstNameTextBox.Text },  // For PDF
-                        { "Last Name", lastNameTextBox.Text },  // For Excel
-                        { "First Name", firstNameTextBox.Text },  // For Excel
-                        { "DoD ID #", dodIdTextBox.Text },
-                        { "Status", statusComboBox.SelectedItem?.ToString() ?? "" },
-                        { "Stamp", stampComboBox.SelectedItem?.ToString() ?? "" },
-                        { "Rank", GetSelectedRank() },
-                        { "UNIT", unitValue ?? "" },
-                        { "Unit", unitValue ?? "" },
-                        { "ISSUE", issue1DateTimePicker.Value.ToShortDateString() },
-                        { "Exp", exp1DateTimePicker.Value.ToShortDateString() },
-                        { "SEX", sexComboBox.SelectedItem?.ToString() ?? "" },
-                        { "DOB", dobDateTimePicker.Value.ToShortDateString() },
-                        { "HEIGHT", heightTextBox.Text },
-                        { "WEIGHT", weightTextBox.Text },
-                        { "HAIRCOLOR", hairColorComboBox.SelectedItem?.ToString() ?? "" },
-                        { "EYECOLOR", eyeColorComboBox.SelectedItem?.ToString() ?? "" },
-                        { "ISSUER", issuerComboBox.SelectedItem?.ToString() ?? "" },
-                        { "AUTO/JEEP", checkedListBox1.CheckedItems.Contains("Auto/Jeep") ? "True" : "False" },
-                        { "MOTORCYCLE", checkedListBox1.CheckedItems.Contains("Motorcycle") ? "True" : "False" },
-                        { "GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "No" },
-                        { "CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? "" },
-                        { "Remarks", remarksBox.Text },
-                        { "MSF", MSFcheckBox.Checked ? "True" : "False" }  // <--- Make sure MSF is included here
-                    };
+            {
+                // PDF field names
+                { "NAME", lastNameTextBox.Text + ", " + firstNameTextBox.Text },  // For PDF
+                { "UNIT", unitValue },  // PDF field uses "UNIT"
+                { "SEX", sexComboBox.SelectedItem?.ToString() ?? "" },
+                { "DOB", dobDateTimePicker.Value.ToShortDateString() },
+                { "HEIGHT", heightTextBox.Text },
+                { "WEIGHT", weightTextBox.Text },
+                { "HAIRCOLOR", hairColorComboBox.SelectedItem?.ToString() ?? "" },
+                { "EYECOLOR", eyeColorComboBox.SelectedItem?.ToString() ?? "" },
+                { "ISSUER", issuerComboBox.SelectedItem?.ToString() ?? "" },
+                { "AUTO/JEEP", autoJeepCheckBox.Checked ? "Yes" : "No" },
+                { "MOTORCYCLE", motorcycleCheckBox.Checked ? "Yes" : "No" },
+                { "GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "No" },
+                { "CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? "" },
+                { "Remarks", remarksBox.Text },
+                { "MSF", msfTextBox.Text },
 
+                // Excel fields
+                { "Last Name", lastNameTextBox.Text },  // For Excel
+                { "First Name", firstNameTextBox.Text },  // For Excel
+                { "DoD ID #", dodIdTextBox.Text },
+                { "Status", statusComboBox.SelectedItem?.ToString() ?? "" },
+                { "Stamp", stampComboBox.SelectedItem?.ToString() ?? "" },
+                { "Rank", GetSelectedRank() },  // Excel field for rank
+                { "Unit", unitValue },  // Excel field uses "Unit"
+            };
 
-                    // Step 5: Decide where to save the permit (Permit #1 or Permit #2)
                     FileInfo fileInfo = new FileInfo(excelFilePath);
                     using (ExcelPackage package = new ExcelPackage(fileInfo))
                     {
                         ExcelWorksheet worksheet = package.Workbook.Worksheets[0];
 
-                        // Check if the worksheet is empty
                         if (worksheet.Dimension == null || worksheet.Dimension.End.Row == 0)
                         {
                             MessageBox.Show("The worksheet is empty or not properly loaded.");
@@ -730,7 +803,7 @@ namespace SOFA_Generator
 
                         int rowIndex = -1;
 
-                        // Find row by DoD ID
+                        // Find the row by DoD ID
                         for (int i = 2; i <= worksheet.Dimension.End.Row; i++)
                         {
                             if (worksheet.Cells[i, 6].Text == formData["DoD ID #"])  // Column 6 for "DoD ID #"
@@ -740,47 +813,71 @@ namespace SOFA_Generator
                             }
                         }
 
-                        // Check if rowIndex was found
+                        // If not found, create a new row
                         if (rowIndex == -1)
                         {
-                            MessageBox.Show("No matching DoD ID found. Creating a new row.");
                             rowIndex = worksheet.Dimension.End.Row + 1;
                         }
 
-                        // Ensure rowIndex is within valid range
-                        if (rowIndex <= 0 || rowIndex > worksheet.Dimension.End.Row + 1)
-                        {
-                            MessageBox.Show($"Row index {rowIndex} is out of range.");
-                            return;
-                        }
+                        // Save or update all Excel data (including permit data)
+                        worksheet.Cells[rowIndex, 1].Value = formData["Last Name"];
+                        worksheet.Cells[rowIndex, 2].Value = formData["First Name"];
+                        worksheet.Cells[rowIndex, 3].Value = formData["Status"];
+                        worksheet.Cells[rowIndex, 4].Value = formData["Rank"];
+                        worksheet.Cells[rowIndex, 5].Value = formData["Unit"];
+                        worksheet.Cells[rowIndex, 6].Value = formData["DoD ID #"];
+                        worksheet.Cells[rowIndex, 15].Value = formData["SEX"];
+                        worksheet.Cells[rowIndex, 16].Value = formData["DOB"];
+                        worksheet.Cells[rowIndex, 17].Value = formData["HEIGHT"];
+                        worksheet.Cells[rowIndex, 18].Value = formData["WEIGHT"];
+                        worksheet.Cells[rowIndex, 19].Value = formData["HAIRCOLOR"];
+                        worksheet.Cells[rowIndex, 20].Value = formData["EYECOLOR"];
+                        worksheet.Cells[rowIndex, 21].Value = formData["GLASSES/CONTACTS"];
 
-                        // Check if Permit #1 is already filled for this user
-                        string existingPermit1 = worksheet.Cells[rowIndex, 7].Text; // Column 7 = Permit #1
+                        // Check if Permit #1 is filled
+                        string existingPermit1 = worksheet.Cells[rowIndex, 7].Text;
 
                         if (string.IsNullOrEmpty(existingPermit1))
                         {
-                            // Permit #1 is empty, save to Permit #1
-                            formData["PERMIT"] = permit1TextBox.Text;
-                            formData["ISSUE"] = issue1DateTimePicker.Value.ToShortDateString();
-                            formData["Exp"] = exp1DateTimePicker.Value.ToShortDateString();
+                            // Permit #1 is empty, so save Permit #1 data
+                            worksheet.Cells[rowIndex, 7].Value = permit1TextBox.Text;
+                            worksheet.Cells[rowIndex, 8].Value = issue1DateTimePicker.Value.ToShortDateString();
+                            worksheet.Cells[rowIndex, 9].Value = exp1DateTimePicker.Value.ToShortDateString();
+
+                            formData["PERMIT"] = permit1TextBox.Text ?? "";  // Save Permit #1 number
+                            formData["ISSUE"] = issue1DateTimePicker.Value.ToShortDateString();  // Use Permit #1 issue date
+                            formData["Exp"] = exp1DateTimePicker.Value.ToShortDateString();  // Set Permit #1 expiration date
                         }
                         else
                         {
-                            // Permit #1 is filled, save to or overwrite Permit #2
-                            formData["PERMIT"] = permit2TextBox.Text;
-                            formData["ISSUE"] = issue2DateTimePicker.Value.ToShortDateString();
-                            formData["Exp"] = exp2DateTimePicker.Value.ToShortDateString();
+                            // Permit #1 is filled, so overwrite Permit #2
+                            worksheet.Cells[rowIndex, 10].Value = permit2TextBox.Text ?? "";
+                            worksheet.Cells[rowIndex, 11].Value = issue2DateTimePicker.Value.ToShortDateString();
+                            worksheet.Cells[rowIndex, 12].Value = exp2DateTimePicker.Value.ToShortDateString();
+
+                            formData["PERMIT"] = permit2TextBox.Text ?? "";  // Save Permit #2 number
+                            formData["ISSUE"] = issue2DateTimePicker.Value.ToShortDateString();  // Use Permit #2 issue date
+                            formData["Exp"] = exp2DateTimePicker.Value.ToShortDateString();  // Set Permit #2 expiration date
                         }
+
+                        // Save other optional fields (MSF, remarks, etc.)
+                        worksheet.Cells[rowIndex, 13].Value = formData["MSF"];
+                        worksheet.Cells[rowIndex, 14].Value = formData["CAT/PAX"];
+                        worksheet.Cells[rowIndex, 22].Value = formData["Remarks"];
+                        worksheet.Cells[rowIndex, 23].Value = formData["Stamp"];
+
+                        // Save the Excel file
+                        package.Save();
                     }
 
-                    // Step 6: Call CompletePdfWorkflow to generate the PDF
+                    // Step 6: Generate the PDF
                     CompletePdfWorkflow(pdfTemplatePath, outputPdfPath, formData, filePath);
 
-                    // Step 7: Save form data to Excel (this includes the correct permit)
-                    SaveDataToExcel(formData);
+                    // Step 7: Automatically print the filled PDF to the default printer
+                    PrintPdf(outputPdfPath);
 
                     // Confirmation message
-                    MessageBox.Show("PDF generated and data saved successfully!");
+                    MessageBox.Show("PDF generated, data saved, and sent to printer!");
                 }
             }
             catch (Exception ex)
@@ -788,15 +885,51 @@ namespace SOFA_Generator
                 MessageBox.Show($"An error occurred while saving the signature or generating the PDF: {ex.Message}");
             }
         }
+        // Method to print the PDF
+        private void PrintPdf(string pdfFilePath)
+        {
+            try
+            {
+                // Path to Adobe Reader executable (change this if it's installed elsewhere)
+                string adobeReaderPath = @"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe";
+
+                // Check if Adobe Reader is installed
+                if (!File.Exists(adobeReaderPath))
+                {
+                    MessageBox.Show("Adobe Reader is not installed or not found at the specified path.");
+                    return;
+                }
+
+                // Use Adobe Reader to print the PDF
+                Process printProcess = new Process();
+                printProcess.StartInfo = new ProcessStartInfo
+                {
+                    FileName = adobeReaderPath,
+                    Arguments = $"/t \"{pdfFilePath}\"",  // /t prints the file to the default printer
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden
+                };
+                printProcess.Start();
+
+                // Optionally, wait for the process to complete printing
+                printProcess.WaitForExit(10000); // Wait for 10 seconds for printing to complete
+                printProcess.Close();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error while printing the PDF: {ex.Message}");
+            }
+        }
+
 
         private void InitializeCatPaxComboBox()
         {
             catPaxComboBox.Items.Clear();
-            catPaxComboBox.Items.Add("Cat 1: Up to 50cc");
-            catPaxComboBox.Items.Add("Cat 2: Over 50cc up to 125cc");
-            catPaxComboBox.Items.Add("Cat 3: Over 125cc up to 400cc");
-            catPaxComboBox.Items.Add("Cat 4: Over 400cc up to 750cc");
-            catPaxComboBox.Items.Add("Cat 5: Over 750cc");
+            catPaxComboBox.Items.Add("Cat 1: 50cc or less");
+            catPaxComboBox.Items.Add("Cat 2: Motorcycles 125cc or less");
+            catPaxComboBox.Items.Add("Cat 3: Motorcycles 400cc or less");
+            catPaxComboBox.Items.Add("Cat 4: Motorcycles 750cc or less");
+            catPaxComboBox.Items.Add("Cat 5: Motorcycles over 750cc");
 
             // Optionally, select the first item as default
             if (catPaxComboBox.Items.Count > 0)
@@ -846,19 +979,28 @@ namespace SOFA_Generator
                         rowIndex = worksheet.Dimension.End.Row + 1;
                     }
 
-                    // **Write data to the Excel file**
+                    // Save **all** the customer data (for both new and existing rows)
                     worksheet.Cells[rowIndex, 1].Value = data["Last Name"];
                     worksheet.Cells[rowIndex, 2].Value = data["First Name"];
                     worksheet.Cells[rowIndex, 3].Value = data["Status"];
                     worksheet.Cells[rowIndex, 4].Value = data["Rank"];
                     worksheet.Cells[rowIndex, 5].Value = data["Unit"];
                     worksheet.Cells[rowIndex, 6].Value = data["DoD ID #"];
+
+                    // Save Permit #1 details
                     worksheet.Cells[rowIndex, 7].Value = data["PERMIT"];   // Permit #1
                     worksheet.Cells[rowIndex, 8].Value = data["ISSUE"];    // Issue 1
                     worksheet.Cells[rowIndex, 9].Value = data["Exp"];      // Exp 1
-                    worksheet.Cells[rowIndex, 10].Value = data["PERMIT"];  // Permit #2
-                    worksheet.Cells[rowIndex, 11].Value = data["ISSUE"];   // Issue 2
-                    worksheet.Cells[rowIndex, 12].Value = data["Exp"];     // Exp 2
+
+                    // Save Permit #2 fields if available
+                    if (!string.IsNullOrEmpty(permit2TextBox.Text))
+                    {
+                        worksheet.Cells[rowIndex, 10].Value = data["PERMIT"];  // Permit #2
+                        worksheet.Cells[rowIndex, 11].Value = data["ISSUE"];   // Issue 2
+                        worksheet.Cells[rowIndex, 12].Value = data["Exp"];     // Exp 2
+                    }
+
+                    // Save additional fields like MSF, CAT/PAX, etc.
                     worksheet.Cells[rowIndex, 13].Value = data["MSF"];
                     worksheet.Cells[rowIndex, 14].Value = data["CAT/PAX"];
                     worksheet.Cells[rowIndex, 15].Value = data["SEX"];
@@ -913,31 +1055,25 @@ namespace SOFA_Generator
             return false;
         }
 
-        private void checkedListBox1_SelectedIndexChanged(object sender, EventArgs e)
+        private void motorcycleCheckBox_CheckedChanged(object sender, EventArgs e)
         {
-            // Only show CAT/PAX and MSF when the Motorcycle checkbox is selected
-            if (checkedListBox1.CheckedItems.Contains("Motorcycle"))
-            {
-                MSFcheckBox.Visible = true;
-                MSFcheckBox.Checked = true; // Automatically check MSF if motorcycle is selected
-                catPaxComboBox.Visible = true;
-                catLabel.Visible = true;
-            }
-            else
-            {
-                MSFcheckBox.Visible = false;
-                MSFcheckBox.Checked = false; // Uncheck and hide MSF if motorcycle is deselected
-                catPaxComboBox.Visible = false;
-                catLabel.Visible = false; // Hide CAT/PAX and label if motorcycle is deselected
-            }
+            // Show/Hide MSF and Category fields based on the motorcycle checkbox state
+            bool isMotorcycleSelected = motorcycleCheckBox.Checked;
 
-            // The AUTO/JEEP checkbox will not trigger the CAT/PAX field to become visible
-            if (!checkedListBox1.CheckedItems.Contains("Motorcycle"))
+            // Show or hide the msfTextBox and CAT/PAX combo box based on the checkbox state
+            msfTextBox.Visible = isMotorcycleSelected;
+            catPaxComboBox.Visible = isMotorcycleSelected;
+            catLabel.Visible = isMotorcycleSelected;
+            MSFlabel.Visible = isMotorcycleSelected;
+
+            // If motorcycle is unchecked, clear the text and reset combo box selection
+            if (!isMotorcycleSelected)
             {
-                catPaxComboBox.Visible = false;
-                catLabel.Visible = false;
+                msfTextBox.Clear();
+                catPaxComboBox.SelectedIndex = -1; // Unselect any category
             }
         }
+
 
         private void btnRequestSignature_Click(object sender, EventArgs e)
         {
@@ -1146,20 +1282,21 @@ namespace SOFA_Generator
             switch (stampSelection)
             {
                 case "Limited":
-                    imagePath = @"D:\Users\shane\SOFA King\LIMITED.png"; // Update with correct path
+                    imagePath = Path.Combine(baseDir, "Resources", "Images", "LIMITED.png");
                     break;
                 case "On Base Only":
-                    imagePath = @"D:\Users\shane\SOFA King\ON_BASE.png";
+                    imagePath = Path.Combine(baseDir, "Resources", "Images", "ON_BASE.png");
                     break;
                 case "TDY":
-                    imagePath = @"D:\Users\shane\SOFA King\TDY.png";
+                    imagePath = Path.Combine(baseDir, "Resources", "Images", "TDY.png");
                     break;
                 case "Student Driver":
-                    imagePath = @"D:\Users\shane\SOFA King\STUDENT_DRIVER.png";
+                    imagePath = Path.Combine(baseDir, "Resources", "Images", "STUDENT_DRIVER.png");
                     break;
                 case "":
-                    // No stamp selected, return early
-                    return;
+                    // Remove the image field entirely if no stamp is selected
+                    RemoveStampField(form, "Image1_af_image");
+                    return;  // Exit the method
             }
 
             if (File.Exists(imagePath))
@@ -1187,9 +1324,9 @@ namespace SOFA_Generator
                         // Add the image to the canvas
                         var canvas = new Canvas(pdfDoc.GetPage(1), pdfDoc.GetPage(1).GetPageSize());
                         canvas.Add(img);
-                        canvas.Close();  // Ensure the canvas is finalized
+                        canvas.Close();
 
-                        // Optionally, remove or hide the original field if necessary
+                        // Remove the original field after adding the image
                         form.RemoveField("Image1_af_image");
                     }
                     else
@@ -1208,12 +1345,29 @@ namespace SOFA_Generator
             }
         }
 
+        // Helper method to remove the stamp field if no stamp is selected
+        private void RemoveStampField(PdfAcroForm form, string fieldName)
+        {
+            PdfFormField stampField = form.GetField(fieldName);
+            if (stampField != null)
+            {
+                form.RemoveField(fieldName); // This removes the field entirely from the form
+            }
+        }
+
+
         private void btnGeneratePdf_Click(object sender, EventArgs e)
         {
             // Define paths for the template PDF, output PDF, and signature image
-            string pdfTemplatePath = @"D:\Users\shane\SOFA King\Form4EJ.pdf";
-            string outputPdfPath = @"D:\Users\shane\SOFA King\Form4EJ_Filled.pdf";
-            string signatureImagePath = @"C:\Users\shane\AppData\Local\Temp\signatureCapture.jpeg";
+            // PDF path
+            string pdfTemplatePath = Path.Combine(baseDir, "Resources", "PDF", "Form4EJ.pdf");
+            string outputPdfPath = Path.Combine(baseDir, "Resources", "PDF", "Form4EJ_Filled.pdf");
+            // Image paths
+            string limitedImagePath = Path.Combine(baseDir, "Resources", "Images", "LIMITED.png");
+            string onBaseImagePath = Path.Combine(baseDir, "Resources", "Images", "ON_BASE.png");
+            string tdyImagePath = Path.Combine(baseDir, "Resources", "Images", "TDY.png");
+            string studentDriverImagePath = Path.Combine(baseDir, "Resources", "Images", "STUDENT_DRIVER.png");
+            string signatureImagePath = Path.Combine(baseDir, "Resources", "Images", "signatureCapture.jpeg");
 
             // Create a dictionary with all form data (field names must match those in the PDF)
             Dictionary<string, string> formData = new Dictionary<string, string>
@@ -1231,8 +1385,8 @@ namespace SOFA_Generator
     { "UNIT", unitComboBox.SelectedItem?.ToString() ?? "" },
     { "ISSUER", issuerComboBox.SelectedItem?.ToString() ?? "" },
     { "PERMIT", permit1TextBox.Text },
-    { "AUTO/JEEP", checkedListBox1.CheckedItems.Contains("Auto/Jeep") ? "True" : "False" },
-    { "MOTOCYCLE", checkedListBox1.CheckedItems.Contains("Motorcycle") ? "True" : "False" },
+    { "AUTO/JEEP", autoJeepCheckBox.Checked ? "True" : "False" },
+    { "MOTORCYCLE", motorcycleCheckBox.Checked ? "True" : "False" },
     { "GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "No" },
     { "CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? "" },
     { "Remarks", remarksBox.Text }
@@ -1365,15 +1519,6 @@ namespace SOFA_Generator
 
         }
 
-        private void eyeColorLabel_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void checkBox1_CheckedChanged(object sender, EventArgs e)
-        {
-
-        }
 
         private void issuerComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
@@ -1405,10 +1550,6 @@ namespace SOFA_Generator
 
         }
 
-        private void sexLabel_Click(object sender, EventArgs e)
-        {
-
-        }
 
         private void btnSearch_Click_1(object sender, EventArgs e)
         {
@@ -1469,20 +1610,23 @@ namespace SOFA_Generator
             // Code to handle reset button click
         }
 
-        private void groupBox3_Enter(object sender, EventArgs e)
-        {
-            // Code to handle when group box 3 is entered
-        }
-        private void UpdateSignaturePanel()
-        {
-            signaturePanel.Refresh(); // Call this after saving or loading a signature
-        }
+
         private void remarksBox_TextChanged(object sender, EventArgs e)
         {
 
         }
 
         private void sigPlusNET1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void autoJeepCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label2_Click_3(object sender, EventArgs e)
         {
 
         }

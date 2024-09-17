@@ -21,10 +21,8 @@ namespace SOFA_Generator
             lastNameTextBox = new TextBox();
             firstNameTextBox = new TextBox();
             dodIdTextBox = new TextBox();
-            checkedListBox1 = new CheckedListBox();
             signaturePanel = new Panel();
             sigPlusNET1 = new Topaz.SigPlusNET();
-            label6 = new Label();
             btnSaveSignature = new Button();
             btnRequestSignature = new Button();
             btnGeneratePermitNumber = new Button();
@@ -56,7 +54,6 @@ namespace SOFA_Generator
             firstNameLabel = new Label();
             unitLabel = new Label();
             catLabel = new Label();
-            MSFcheckBox = new CheckBox();
             restrictionsBox = new CheckBox();
             remarksBox = new TextBox();
             remarksLabel = new Label();
@@ -77,6 +74,11 @@ namespace SOFA_Generator
             picturegroupBox = new GroupBox();
             stampLabel = new Label();
             stampComboBox = new ComboBox();
+            msfTextBox = new TextBox();
+            MSFlabel = new Label();
+            autoJeepCheckBox = new CheckBox();
+            motorcycleCheckBox = new CheckBox();
+            label2 = new Label();
             signaturePanel.SuspendLayout();
             groupBox1.SuspendLayout();
             groupBox2.SuspendLayout();
@@ -111,25 +113,13 @@ namespace SOFA_Generator
             dodIdTextBox.Size = new Size(252, 34);
             dodIdTextBox.TabIndex = 1;
             // 
-            // checkedListBox1
-            // 
-            checkedListBox1.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            checkedListBox1.FormattingEnabled = true;
-            checkedListBox1.Items.AddRange(new object[] { "Auto/Jeep", "Motorcycle" });
-            checkedListBox1.Location = new Point(172, 581);
-            checkedListBox1.Name = "checkedListBox1";
-            checkedListBox1.Size = new Size(150, 62);
-            checkedListBox1.TabIndex = 18;
-            checkedListBox1.Visible = false;
-            checkedListBox1.SelectedIndexChanged += checkedListBox1_SelectedIndexChanged;
-            // 
             // signaturePanel
             // 
             signaturePanel.BorderStyle = BorderStyle.FixedSingle;
             signaturePanel.Controls.Add(sigPlusNET1);
-            signaturePanel.Location = new Point(8, 151);
+            signaturePanel.Location = new Point(35, 151);
             signaturePanel.Name = "signaturePanel";
-            signaturePanel.Size = new Size(293, 51);
+            signaturePanel.Size = new Size(232, 51);
             signaturePanel.TabIndex = 11;
             signaturePanel.Visible = false;
             // 
@@ -139,20 +129,9 @@ namespace SOFA_Generator
             sigPlusNET1.ForeColor = Color.Black;
             sigPlusNET1.Location = new Point(-1, -1);
             sigPlusNET1.Name = "sigPlusNET1";
-            sigPlusNET1.Size = new Size(293, 51);
+            sigPlusNET1.Size = new Size(232, 51);
             sigPlusNET1.TabIndex = 0;
             sigPlusNET1.Click += sigPlusNET1_Click;
-            // 
-            // label6
-            // 
-            label6.AutoSize = true;
-            label6.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            label6.Location = new Point(29, 592);
-            label6.Name = "label6";
-            label6.Size = new Size(124, 28);
-            label6.TabIndex = 12;
-            label6.Text = "Operation of";
-            label6.Visible = false;
             // 
             // btnSaveSignature
             // 
@@ -270,8 +249,8 @@ namespace SOFA_Generator
             // catPaxComboBox
             // 
             catPaxComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-            catPaxComboBox.Items.AddRange(new object[] { "Cat 1: Up to 50cc", "Cat 2: Over 50cc up to 125cc", "Cat 3: Over 125cc up to 400cc", "Cat 4: Over 400cc up to 750cc", "Cat 5: Over 750cc" });
-            catPaxComboBox.Location = new Point(128, 677);
+            catPaxComboBox.Items.AddRange(new object[] { "Cat 1: 50cc or less", "Cat 2: Motorcycles 125cc or less", "Cat 3: Motorcycles 400cc or less", "Cat 4: Motorcycles 750cc or less", "Cat 5: Motorcycles over 750cc" });
+            catPaxComboBox.Location = new Point(129, 663);
             catPaxComboBox.Name = "catPaxComboBox";
             catPaxComboBox.Size = new Size(195, 28);
             catPaxComboBox.TabIndex = 19;
@@ -480,31 +459,18 @@ namespace SOFA_Generator
             // 
             catLabel.AutoSize = true;
             catLabel.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            catLabel.Location = new Point(29, 677);
+            catLabel.Location = new Point(29, 659);
             catLabel.Name = "catLabel";
             catLabel.Size = new Size(92, 28);
             catLabel.TabIndex = 48;
             catLabel.Text = "Category";
             catLabel.Click += catLabel_Click;
             // 
-            // MSFcheckBox
-            // 
-            MSFcheckBox.AutoSize = true;
-            MSFcheckBox.BackgroundImageLayout = ImageLayout.Center;
-            MSFcheckBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            MSFcheckBox.Location = new Point(29, 646);
-            MSFcheckBox.Name = "MSFcheckBox";
-            MSFcheckBox.Size = new Size(73, 32);
-            MSFcheckBox.TabIndex = 19;
-            MSFcheckBox.Text = "MSF";
-            MSFcheckBox.UseVisualStyleBackColor = true;
-            MSFcheckBox.CheckedChanged += checkBox1_CheckedChanged;
-            // 
             // restrictionsBox
             // 
             restrictionsBox.AutoSize = true;
             restrictionsBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            restrictionsBox.Location = new Point(29, 539);
+            restrictionsBox.Location = new Point(29, 547);
             restrictionsBox.Name = "restrictionsBox";
             restrictionsBox.Size = new Size(181, 32);
             restrictionsBox.TabIndex = 17;
@@ -694,19 +660,77 @@ namespace SOFA_Generator
             // 
             // stampComboBox
             // 
+            stampComboBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
             stampComboBox.FormattingEnabled = true;
             stampComboBox.Items.AddRange(new object[] { "", "Student Driver", "On Base Only", "TDY", "Limited" });
-            stampComboBox.Location = new Point(172, 505);
+            stampComboBox.Location = new Point(173, 505);
             stampComboBox.Name = "stampComboBox";
-            stampComboBox.Size = new Size(151, 28);
+            stampComboBox.Size = new Size(151, 36);
             stampComboBox.TabIndex = 16;
+            // 
+            // msfTextBox
+            // 
+            msfTextBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            msfTextBox.Location = new Point(129, 623);
+            msfTextBox.Name = "msfTextBox";
+            msfTextBox.Size = new Size(193, 34);
+            msfTextBox.TabIndex = 68;
+            // 
+            // MSFlabel
+            // 
+            MSFlabel.AutoSize = true;
+            MSFlabel.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            MSFlabel.Location = new Point(29, 626);
+            MSFlabel.Name = "MSFlabel";
+            MSFlabel.Size = new Size(51, 28);
+            MSFlabel.TabIndex = 69;
+            MSFlabel.Text = "MSF";
+            // 
+            // autoJeepCheckBox
+            // 
+            autoJeepCheckBox.AutoSize = true;
+            autoJeepCheckBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            autoJeepCheckBox.Location = new Point(29, 585);
+            autoJeepCheckBox.Name = "autoJeepCheckBox";
+            autoJeepCheckBox.Size = new Size(124, 32);
+            autoJeepCheckBox.TabIndex = 70;
+            autoJeepCheckBox.Text = "Auto/Jeep";
+            autoJeepCheckBox.UseVisualStyleBackColor = true;
+            autoJeepCheckBox.CheckedChanged += autoJeepCheckBox_CheckedChanged;
+            // 
+            // motorcycleCheckBox
+            // 
+            motorcycleCheckBox.AutoSize = true;
+            motorcycleCheckBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
+            motorcycleCheckBox.Location = new Point(185, 585);
+            motorcycleCheckBox.Name = "motorcycleCheckBox";
+            motorcycleCheckBox.Size = new Size(133, 32);
+            motorcycleCheckBox.TabIndex = 71;
+            motorcycleCheckBox.Text = "Motorcycle";
+            motorcycleCheckBox.UseVisualStyleBackColor = true;
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.ForeColor = SystemColors.InactiveBorder;
+            label2.Location = new Point(1060, 687);
+            label2.Name = "label2";
+            label2.Size = new Size(162, 20);
+            label2.TabIndex = 72;
+            label2.Text = "Powered by Project Arc";
+            label2.Click += label2_Click_3;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = Color.LightSteelBlue;
-            ClientSize = new Size(1223, 718);
+            ClientSize = new Size(1223, 706);
+            Controls.Add(label2);
+            Controls.Add(motorcycleCheckBox);
+            Controls.Add(autoJeepCheckBox);
+            Controls.Add(MSFlabel);
+            Controls.Add(msfTextBox);
             Controls.Add(stampComboBox);
             Controls.Add(stampLabel);
             Controls.Add(picturegroupBox);
@@ -720,7 +744,6 @@ namespace SOFA_Generator
             Controls.Add(remarksLabel);
             Controls.Add(remarksBox);
             Controls.Add(restrictionsBox);
-            Controls.Add(MSFcheckBox);
             Controls.Add(catLabel);
             Controls.Add(unitLabel);
             Controls.Add(firstNameLabel);
@@ -745,8 +768,6 @@ namespace SOFA_Generator
             Controls.Add(btnSearch);
             Controls.Add(btnGeneratePermitNumber);
             Controls.Add(btnSaveSignature);
-            Controls.Add(label6);
-            Controls.Add(checkedListBox1);
             Controls.Add(dodIdTextBox);
             Controls.Add(firstNameTextBox);
             Controls.Add(lastNameTextBox);
@@ -789,9 +810,7 @@ namespace SOFA_Generator
         private System.Windows.Forms.TextBox lastNameTextBox;
         private System.Windows.Forms.TextBox firstNameTextBox;
         private System.Windows.Forms.TextBox dodIdTextBox;
-        private System.Windows.Forms.CheckedListBox checkedListBox1;
         private System.Windows.Forms.Panel signaturePanel;
-        private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Button btnSaveSignature;
         private System.Windows.Forms.Button btnRequestSignature;
         private System.Windows.Forms.Button btnGeneratePermitNumber;
@@ -823,7 +842,6 @@ namespace SOFA_Generator
         private Label firstNameLabel;
         private Label unitLabel;
         private Label catLabel;
-        private CheckBox MSFcheckBox;
         private CheckBox restrictionsBox;
         private TextBox remarksBox;
         private Label remarksLabel;
@@ -845,5 +863,10 @@ namespace SOFA_Generator
         private GroupBox picturegroupBox;
         private Label stampLabel;
         private ComboBox stampComboBox;
+        private TextBox msfTextBox;
+        private Label MSFlabel;
+        private CheckBox autoJeepCheckBox;
+        private CheckBox motorcycleCheckBox;
+        private Label label2;
     }
 }
