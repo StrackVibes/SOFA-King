@@ -773,8 +773,8 @@ namespace SOFA_Generator
                 { "HAIRCOLOR", hairColorComboBox.SelectedItem?.ToString() ?? "" },
                 { "EYECOLOR", eyeColorComboBox.SelectedItem?.ToString() ?? "" },
                 { "ISSUER", issuerComboBox.SelectedItem?.ToString() ?? "" },
-                { "AUTO/JEEP", autoJeepCheckBox.Checked ? "Yes" : "No" },
-                { "MOTORCYCLE", motorcycleCheckBox.Checked ? "Yes" : "No" },
+                { "AUTO/JEEP", autoJeepCheckBox.Checked ? "Yes" : "Off" },
+                { "MOTORCYCLE", motorcycleCheckBox.Checked ? "Yes" : "Off" },
                 { "GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "No" },
                 { "CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? "" },
                 { "Remarks", remarksBox.Text },
@@ -1212,8 +1212,8 @@ namespace SOFA_Generator
                     form.GetField("PERMIT")?.SetValue(formData["PERMIT"]);
 
                     // Debug for MOTORCYCLE checkbox
-                    form.GetField("AUTO/JEEP")?.SetValue(formData["AUTO/JEEP"] == "True" ? "Yes" : "Off");
-                    form.GetField("MOTORCYCLE")?.SetValue(formData["MOTORCYCLE"] == "True" ? "Yes" : "Off");
+                    form.GetField("AUTO/JEEP")?.SetValue(formData["AUTO/JEEP"] == "Yes" ? "Yes" : "Off");
+                    form.GetField("MOTORCYCLE")?.SetValue(formData["MOTORCYCLE"] == "Yes" ? "Yes" : "Off");
                     form.GetField("GLASSES/CONTACTS")?.SetValue(formData["GLASSES/CONTACTS"]);
 
                     // Use the mapped description for CAT/PAX in the PDF
@@ -1385,8 +1385,8 @@ namespace SOFA_Generator
     { "UNIT", unitComboBox.SelectedItem?.ToString() ?? "" },
     { "ISSUER", issuerComboBox.SelectedItem?.ToString() ?? "" },
     { "PERMIT", permit1TextBox.Text },
-    { "AUTO/JEEP", autoJeepCheckBox.Checked ? "True" : "False" },
-    { "MOTORCYCLE", motorcycleCheckBox.Checked ? "True" : "False" },
+    { "AUTO/JEEP", autoJeepCheckBox.Checked ? "Yes" : "No" },
+    { "MOTORCYCLE", motorcycleCheckBox.Checked ? "Yes" : "No" },
     { "GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "No" },
     { "CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? "" },
     { "Remarks", remarksBox.Text }

@@ -481,9 +481,9 @@ namespace SOFA_Generator
             // remarksBox
             // 
             remarksBox.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            remarksBox.Location = new Point(863, 210);
+            remarksBox.Location = new Point(897, 210);
             remarksBox.Name = "remarksBox";
-            remarksBox.Size = new Size(330, 34);
+            remarksBox.Size = new Size(296, 34);
             remarksBox.TabIndex = 27;
             remarksBox.TextChanged += remarksBox_TextChanged;
             // 
@@ -491,7 +491,7 @@ namespace SOFA_Generator
             // 
             remarksLabel.AutoSize = true;
             remarksLabel.Font = new Font("Segoe UI", 12F, FontStyle.Regular, GraphicsUnit.Point, 0);
-            remarksLabel.Location = new Point(768, 213);
+            remarksLabel.Location = new Point(802, 213);
             remarksLabel.Name = "remarksLabel";
             remarksLabel.Size = new Size(89, 28);
             remarksLabel.TabIndex = 52;
