@@ -548,13 +548,17 @@ namespace SOFA_Generator
             autoJeepCheckBox.Checked = true;  // Since "Auto/Jeep" is always implied
 
             // Check if MSF is present and populate msfTextBox accordingly
-            if (data.ContainsKey("MSF"))
+            if (data.ContainsKey("MSF") && !string.IsNullOrWhiteSpace(data["MSF"]))
             {
+                // MSF field has valid data
                 msfTextBox.Text = data["MSF"];
                 msfTextBox.Visible = true;
-                motorcycleCheckBox.Checked = true;
+                motorcycleCheckBox.Checked = true;  // Only check if MSF data is valid
+
+                // Make the CAT/PAX fields visible and select the matching item
                 catPaxComboBox.Visible = true;
                 catLabel.Visible = true;
+
                 string catPaxValue = data["CAT/PAX"];
                 var matchingItem = catPaxComboBox.Items.Cast<string>().FirstOrDefault(item => item == catPaxValue);
 
@@ -562,18 +566,19 @@ namespace SOFA_Generator
                 {
                     catPaxComboBox.SelectedItem = matchingItem;
                 }
+                else
+                {
+                    catPaxComboBox.SelectedIndex = -1;  // Clear the selection if no match is found
+                }
             }
             else
             {
-                msfTextBox.Visible = false;
+                // MSF field is empty or doesn't exist, so uncheck Motorcycle and hide fields
                 motorcycleCheckBox.Checked = false;
+                msfTextBox.Visible = false;
                 catPaxComboBox.Visible = false;
                 catLabel.Visible = false;
             }
-
-
-            autoJeepCheckBox.Visible = true;
-            motorcycleCheckBox.Visible = true;
 
             // Populate other fields like DOB, Height, Weight, etc.
             if (DateTime.TryParse(data["DOB"], out DateTime dobDate))
