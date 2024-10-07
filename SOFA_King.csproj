@@ -21,6 +21,7 @@ SOFA King is a proprietary software application developed by Shane Strack in col
 For inquiries, please contact Shane Strack at shane.strack@us.af.mil</Description>
     <Authors>Shane Strack</Authors>
     <Copyright>Copyright © 2024 Shane Strack, Project Arc. All rights reserved.</Copyright>
+    <RepositoryUrl>https://github.com/StrackVibes/SOFA-King</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
