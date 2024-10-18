@@ -5,6 +5,22 @@
 
 > **"From spark to success – SOFA King is here to make your process smoother."** – StrackVibes
 
+<table align="center">
+  <tr>
+    <td>
+      <a href="https://github.com/StrackVibes/SOFA-King">
+        <img src="https://i.ibb.co/6mFrqsD/ezgif-1-8aa8a99184.gif" alt="Product Example">
+      </a>
+    </td>
+    <td>
+      <a href="https://github.com/StrackVibes/SOFA-King">
+        <img src="https://i.ibb.co/4PYQ9Sf/ezgif-1-b7feffc7d1.gif" alt="Product Example">
+      </a>
+    </td>
+  </tr>
+</table>
+
+    
 ---
 
 ## 🚀 Features
@@ -21,6 +37,12 @@
 ## 🎯 Purpose
 
 Designed to reduce the hassle of managing SOFA permits at the Visitor Center, **SOFA King** takes a traditionally paper-heavy process and digitizes it. The goal is to improve operational efficiency, enhance security, and simplify the customer experience.
+
+<div align="center">
+  <a href="https://github.com/StrackVibes/SOFA-King">
+    <img src="https://i.ibb.co/VVrL9Tf/20240912-153414-COLLAGE.jpg" alt="Card Examples">
+  </a>
+</div>
 
 ---
 
