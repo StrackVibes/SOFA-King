@@ -30,6 +30,7 @@ namespace SOFA_Generator
 
         public Form1()
         {
+            ExcelPackage.License.SetNonCommercialOrganization("18 SFS Visitor Center");
             InitializeComponent();
             signatureBitmap = new Bitmap(signaturePanel.Width, signaturePanel.Height);
 
