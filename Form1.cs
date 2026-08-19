@@ -1,61 +1,263 @@
+﻿using iText.Forms;
+using iText.Forms.Fields;
+using iText.IO.Image;
+using iText.Kernel.Pdf;
+using iText.Layout;
 using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
+using System.Drawing.Printing;
 using System.IO;
 using System.Linq;
-using System.Reflection.Emit;
 using System.Windows.Forms;
-using iText.Layout;
-using iText.Layout.Element;
-using System.Drawing.Imaging;
-using iText.Kernel.Pdf;
-using iText.Forms;
-using iText.Forms.Fields;
-using iText.IO.Image;
-using Topaz;
-
-// Alias the namespaces to avoid ambiguity
 using PdfImage = iText.Layout.Element.Image;
-using DrawingImage = System.Drawing.Image;
-using iText.Layout.Properties;
-using iText.Kernel.Pdf.Canvas;
 
 namespace SOFA_Generator
 {
     public partial class Form1 : Form
     {
+        private bool _hasShownFileMissingMessage = false;
         private bool isDrawing = false;
         private Point lastPoint = Point.Empty;
         private Bitmap signatureBitmap;
-        private string excelFilePath = @"\\lxez-fs-021v\18sfs\S 5\S-5B Pass & Registration(PA)\02-USFJ Form 4EJ\05 - Trackers\SOFA.xlsx";  // Default path for the Excel file
+        private string excelFilePath = "";  // Set via the "SOFA Database" browse button to the user's local OneDrive-synced copy
         string baseDir = AppDomain.CurrentDomain.BaseDirectory;
 
         public Form1()
         {
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
             InitializeComponent();
             signatureBitmap = new Bitmap(signaturePanel.Width, signaturePanel.Height);
+
+            // Event hookups
             signaturePanel.Paint += new PaintEventHandler(signaturePanel_Paint);
             signaturePanel.MouseDown += new MouseEventHandler(signaturePanel_MouseDown);
             signaturePanel.MouseMove += new MouseEventHandler(signaturePanel_MouseMove);
             signaturePanel.MouseUp += new MouseEventHandler(signaturePanel_MouseUp);
             btnSearch.Click += new EventHandler(this.btnSearch_Click);
             statusComboBox.SelectedIndexChanged += new EventHandler(this.statusComboBox_SelectedIndexChanged);
-            motorcycleCheckBox.CheckedChanged += motorcycleCheckBox_CheckedChanged;
+            this.LanguageButton.Click += new System.EventHandler(this.LanguageButton_Click);
+            motorcycleCheckBox.CheckedChanged += VehicleCategory_CheckedChanged;
             btnReset.Click += new EventHandler(this.btnReset_Click);
+            PermitSearch.Click += PermitSearch_Click;
             InitializeStampComboBox();
             sigPlusNET1.SetTabletState(1);
             sigPlusNET1.SetJustifyMode(0);
-            InitializeUnitComboBox();
+            excelFilePath = TryGetOneDriveDefaultExcelPath() ?? excelFilePath;
             HideFormFields();
+            LoadIssuerNames();
+            InitializeUnitComboBox();
+            InitializeCivilianRankComboBox();
+            InitializeCatPaxComboBox();
+        }
+
+        private static string? TryGetOneDriveDefaultExcelPath()
+        {
+            string[] envVars = { "OneDriveCommercial", "OneDrive" };
+            foreach (var envVar in envVars)
+            {
+                var root = Environment.GetEnvironmentVariable(envVar);
+                if (string.IsNullOrEmpty(root))
+                    continue;
+
+                var candidate = Path.Combine(root, "18 SFS Pass & Registration - - General", "SOFA King Data.xlsx");
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+            return null;
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
             HideFormFields();
             LoadIssuerNames();
+            InitializeUnitComboBox();
+            InitializeCivilianRankComboBox();
+        }
+
+        private bool TryOpenSofa(out ExcelPackage package)
+        {
+            package = null;
+            try
+            {
+                if (string.IsNullOrEmpty(excelFilePath) || !File.Exists(excelFilePath))
+                {
+                    if (!_hasShownFileMissingMessage)
+                    {
+                        _hasShownFileMissingMessage = true;
+                        MessageBox.Show("Please select an Excel file first.",
+                                        "SOFA King",
+                                        MessageBoxButtons.OK,
+                                        MessageBoxIcon.Warning);
+                    }
+                    return false;
+                }
+
+                package = new ExcelPackage(new FileInfo(excelFilePath));
+                return true;
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                MessageBox.Show("Access denied. Please check file permissions.",
+                                "SOFA King",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                return false;
+            }
+            catch (IOException ex)
+            {
+                MessageBox.Show("File is in use by another application.",
+                                "SOFA King",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Unexpected error opening file: {ex.Message}",
+                                "SOFA King",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                return false;
+            }
+        }
+
+        private void LoadIssuerNames()
+        {
+            if (!TryOpenSofa(out var package))
+                return;
+
+            var defendersSheet = package.Workbook.Worksheets["Defenders"];
+            if (defendersSheet == null)
+            {
+                MessageBox.Show("The 'Defenders' sheet was not found in the Excel file.",
+                                "SOFA King",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                return;
+            }
+
+            issuerComboBox.Items.Clear();
+            for (int row = 2; row <= defendersSheet.Dimension.End.Row; row++)
+            {
+                var defender = defendersSheet.Cells[row, 1].Text.Trim();
+                if (!string.IsNullOrEmpty(defender))
+                    issuerComboBox.Items.Add(defender);
+            }
+            if (issuerComboBox.Items.Count > 0)
+                issuerComboBox.SelectedIndex = 0;
+        }
+
+        private List<string> _allUnits = new();
+        private AutoCompleteStringCollection _unitsAuto = new AutoCompleteStringCollection();
+        private HashSet<string> _validUnits = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        private void InitializeUnitComboBox()
+        {
+            if (!TryOpenSofa(out var package)) return;
+            var defendersSheet = package.Workbook.Worksheets["Defenders"];
+            if (defendersSheet == null) return;
+
+            _validUnits.Clear();
+            unitComboBox.Items.Clear();
+
+            for (int row = 2; row <= defendersSheet.Dimension.End.Row; row++)
+            {
+                var unit = defendersSheet.Cells[row, 2].Text.Trim();
+                if (!string.IsNullOrEmpty(unit) && _validUnits.Add(unit))
+                    unitComboBox.Items.Add(unit);
+            }
+
+            // autocomplete stays as you liked it
+            var autoComplete = new AutoCompleteStringCollection();
+            autoComplete.AddRange(_validUnits.ToArray());
+            unitComboBox.DropDownStyle = ComboBoxStyle.DropDown; // allow typing
+            unitComboBox.AutoCompleteMode = AutoCompleteMode.SuggestAppend;
+            unitComboBox.AutoCompleteSource = AutoCompleteSource.CustomSource;
+            unitComboBox.AutoCompleteCustomSource = autoComplete;
+
+            if (unitComboBox.Items.Count > 0)
+                unitComboBox.SelectedIndex = 0;
+        }
+
+        private bool ValidateUnit()
+        {
+            var unitText = unitComboBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(unitText) || !_validUnits.Contains(unitText))
+            {
+                MessageBox.Show(
+                    "Please select a Unit from the list. Typing a custom unit is not allowed.",
+                    "Validation",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning
+                );
+                unitComboBox.Focus();
+                unitComboBox.SelectAll();
+                return false;
+            }
+            return true;
+        }
+
+
+        private void InitializeCivilianRankComboBox()
+        {
+            if (!TryOpenSofa(out var package))
+                return;
+
+            var civSheet = package.Workbook.Worksheets["Defenders"];
+            if (civSheet == null)
+                return;
+
+            civilianRankComboBox.Items.Clear();
+            int added = 0;
+            var endRow = civSheet.Dimension?.End.Row ?? 0;
+            for (int row = 2; row <= endRow; row++)
+            {
+                // Column C is index 3
+                var rank = civSheet.Cells[row, 3].Text.Trim();
+                if (!string.IsNullOrEmpty(rank))
+                {
+                    civilianRankComboBox.Items.Add(rank);
+                    added++;
+                }
+            }
+
+            if (added == 0)
+            {
+                MessageBox.Show("No civilian ranks were found in sheet “Defenders”, column C.",
+                                "SOFA King",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning);
+            }
+            else
+            {
+                civilianRankComboBox.SelectedIndex = 0;
+            }
+        }
+
+        private void btnBrowse_Click(object sender, EventArgs e)
+        {
+            using (var dlg = new OpenFileDialog())
+            {
+                dlg.InitialDirectory = Path.GetDirectoryName(excelFilePath);
+                dlg.Filter = "Excel Files (*.xlsx)|*.xlsx|All Files (*.*)|*.*";
+                if (dlg.ShowDialog() == DialogResult.OK)
+                {
+                    excelFilePath = dlg.FileName;
+                    MessageBox.Show($"Excel file path set to: {excelFilePath}",
+                                    "File Selected",
+                                    MessageBoxButtons.OK,
+                                    MessageBoxIcon.Information);
+
+                    LoadIssuerNames();
+                    InitializeUnitComboBox();
+                    InitializeCivilianRankComboBox();
+                }
+            }
         }
 
         private void HideFormFields()
@@ -91,6 +293,9 @@ namespace SOFA_Generator
             signaturegroupBox.Visible = false;
             picturegroupBox.Visible = false;
             stampComboBox.Visible = false;
+            PermitcheckBox.Visible = false;
+            mopedCheckBox.Visible = false;
+            otherCheckBox.Visible = false;
 
             // Also hide labels
             sexLabel.Visible = false;
@@ -143,58 +348,6 @@ namespace SOFA_Generator
             }
         }
 
-        private void InitializeUnitComboBox()
-        {
-            // Ensure the Excel file path is set
-            if (string.IsNullOrEmpty(excelFilePath))
-            {
-                MessageBox.Show("Please select an Excel file first.");
-                return;
-            }
-
-            FileInfo fileInfo = new FileInfo(excelFilePath);
-
-            try
-            {
-                using (ExcelPackage package = new ExcelPackage(fileInfo))
-                {
-                    // Get the "Defenders" worksheet
-                    ExcelWorksheet defendersSheet = package.Workbook.Worksheets["Defenders"];
-
-                    if (defendersSheet == null)
-                    {
-                        MessageBox.Show("The 'Defenders' sheet was not found in the Excel file.");
-                        return;
-                    }
-
-                    // Clear the existing items in the ComboBox
-                    unitComboBox.Items.Clear();
-
-                    // Iterate through the rows in the Defenders sheet
-                    int startRow = 2; // Assuming the first row is a header
-                    for (int row = startRow; row <= defendersSheet.Dimension.End.Row; row++)
-                    {
-                        string unitName = defendersSheet.Cells[row, 2].Text; // Column 2 for unit names
-
-                        if (!string.IsNullOrEmpty(unitName))
-                        {
-                            unitComboBox.Items.Add(unitName);
-                        }
-                    }
-
-                    // Optionally, select the first item in the ComboBox if there are items
-                    if (unitComboBox.Items.Count > 0)
-                    {
-                        unitComboBox.SelectedIndex = 0;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error loading units: {ex.Message}");
-            }
-        }
-
         private void ShowFormFields(bool isExistingEntry)
         {
             ShowFormFields(isExistingEntry, signaturePanel);
@@ -222,6 +375,9 @@ namespace SOFA_Generator
             signaturegroupBox.Visible = true;
             picturegroupBox.Visible = true;
             stampComboBox.Visible = true;
+            PermitcheckBox.Visible = true;
+            mopedCheckBox.Visible = true;
+            otherCheckBox.Visible = true;
 
             // Show labels
             sexLabel.Visible = true;
@@ -264,26 +420,92 @@ namespace SOFA_Generator
             autoJeepCheckBox.Visible = true;
             motorcycleCheckBox.Visible = true;
             msfTextBox.Visible = true;
-            UpdateMotorcycleFieldsVisibility();
+            UpdateVehicleCategoryFieldsVisibility();
         }
 
-        private void UpdateMotorcycleFieldsVisibility()
+        private void UpdateVehicleCategoryFieldsVisibility()
         {
-            bool isMotorcycleSelected = motorcycleCheckBox.Checked;
+            bool showRiderFields =
+                motorcycleCheckBox.Checked ||
+                (mopedCheckBox != null && mopedCheckBox.Checked) ||
+                (otherCheckBox != null && otherCheckBox.Checked);
 
-            msfTextBox.Visible = isMotorcycleSelected;
-            catPaxComboBox.Visible = isMotorcycleSelected;
-            catLabel.Visible = isMotorcycleSelected;
-            MSFlabel.Visible = isMotorcycleSelected;
+            msfTextBox.Visible = showRiderFields;
+            catPaxComboBox.Visible = showRiderFields;
+            catLabel.Visible = showRiderFields;
+            MSFlabel.Visible = showRiderFields;
 
-            if (!isMotorcycleSelected)
+            if (!showRiderFields)
             {
                 msfTextBox.Clear();
-                catPaxComboBox.SelectedIndex = -1; // Clear the selection when not visible
+                catPaxComboBox.SelectedIndex = -1;
             }
         }
 
+        private void VehicleCategory_CheckedChanged(object sender, EventArgs e)
+        {
+            UpdateVehicleCategoryFieldsVisibility();
+        }
 
+        private void PermitSearch_Click(object sender, EventArgs e)
+        {
+            var permitNumber = PermitSearchTextBox.Text.Trim();
+            if (string.IsNullOrEmpty(permitNumber))
+            {
+                MessageBox.Show("Please enter a permit number to search.",
+                                "SOFA King",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning);
+                return;
+            }
+            if (!TryOpenSofa(out var package))
+                return;
+            var ws = package.Workbook.Worksheets[0];
+            int rowFound = -1;
+            for (int row = 2; row <= ws.Dimension.End.Row; row++)
+            {
+                if (ws.Cells[row, 7].Text.Trim() == permitNumber || ws.Cells[row, 10].Text.Trim() == permitNumber)
+                {
+                    rowFound = row;
+                    break;
+                }
+            }
+            if (rowFound < 0)
+            {
+                MessageBox.Show($"Permit number {permitNumber} not found.",
+                                "SOFA King",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+                return;
+            }
+            var data = new Dictionary<string, string>
+            {
+                { "Last Name", ws.Cells[rowFound, 1].Text },
+                { "First Name", ws.Cells[rowFound, 2].Text },
+                { "Status", ws.Cells[rowFound, 3].Text },
+                { "Rank", ws.Cells[rowFound, 4].Text },
+                { "Unit", ws.Cells[rowFound, 5].Text },
+                { "DoD ID #", ws.Cells[rowFound, 6].Text },
+                { "Permit #1", ws.Cells[rowFound, 7].Text },
+                { "Issue 1", ws.Cells[rowFound, 8].Text },
+                { "Exp 1", ws.Cells[rowFound, 9].Text },
+                { "Permit #2", ws.Cells[rowFound, 10].Text },
+                { "Issue 2", ws.Cells[rowFound, 11].Text },
+                { "Exp 2", ws.Cells[rowFound, 12].Text },
+                { "MSF", ws.Cells[rowFound, 13].Text },
+                { "CAT/PAX", ws.Cells[rowFound, 14].Text },
+                { "Sex", ws.Cells[rowFound, 15].Text },
+                { "DOB", ws.Cells[rowFound, 16].Text },
+                { "Height", ws.Cells[rowFound, 17].Text },
+                { "Weight", ws.Cells[rowFound, 18].Text },
+                { "HairColor", ws.Cells[rowFound, 19].Text },
+                { "EyeColor", ws.Cells[rowFound, 20].Text },
+                { "GlassesContacts", ws.Cells[rowFound, 21].Text },
+                { "Remarks", ws.Cells[rowFound, 22].Text },
+                { "Stamp", ws.Cells[rowFound, 23].Text }
+            };
+            PopulateFormWithExistingData(data);
+        }
 
         private void ClearFormFields()
         {
@@ -408,7 +630,9 @@ namespace SOFA_Generator
                     { "EyeColor", worksheet.Cells[rowIndex, 20].Text },
                     { "GlassesContacts", worksheet.Cells[rowIndex, 21].Text },
                     { "Remarks", worksheet.Cells[rowIndex, 22].Text },
-                    { "Stamp", worksheet.Cells[rowIndex, 23].Text }  // Column 23 for "Stamp"
+                    { "Stamp", worksheet.Cells[rowIndex, 23].Text },
+                    { "Moped", worksheet.Cells[rowIndex, 24].Text },
+                    { "Other", worksheet.Cells[rowIndex, 25].Text }
                 };
                         return data;
                     }
@@ -602,73 +826,6 @@ namespace SOFA_Generator
             lastPoint = e.Location;
         }
 
-        private void LoadIssuerNames()
-        {
-            // Ensure the Excel file path is set
-            if (string.IsNullOrEmpty(excelFilePath))
-            {
-                MessageBox.Show("Please select an Excel file first.");
-                return;
-            }
-
-            FileInfo fileInfo = new FileInfo(excelFilePath);
-
-            // Open the Excel package
-            using (ExcelPackage package = new ExcelPackage(fileInfo))
-            {
-                // Get the "Defenders" worksheet
-                ExcelWorksheet defendersSheet = package.Workbook.Worksheets["Defenders"];
-
-                if (defendersSheet == null)
-                {
-                    MessageBox.Show("The 'Defenders' sheet was not found in the Excel file.");
-                    return;
-                }
-
-                // Clear the existing items in the ComboBox
-                issuerComboBox.Items.Clear();
-
-                // Iterate through the rows in the Defenders sheet
-                int startRow = 2; // Assuming the first row is a header
-                for (int row = startRow; row <= defendersSheet.Dimension.End.Row; row++)
-                {
-                    string defenderName = defendersSheet.Cells[row, 1].Text; // Column 1 for Defender names
-
-                    if (!string.IsNullOrEmpty(defenderName))
-                    {
-                        issuerComboBox.Items.Add(defenderName);
-                    }
-                }
-
-                if (issuerComboBox.Items.Count > 0)
-                {
-                    issuerComboBox.SelectedIndex = 0; // Optionally select the first item
-                }
-            }
-        }
-
-        private void btnBrowse_Click(object sender, EventArgs e)
-        {
-            using (OpenFileDialog openFileDialog = new OpenFileDialog())
-            {
-                openFileDialog.InitialDirectory = Path.GetDirectoryName(excelFilePath);
-                openFileDialog.Filter = "Excel Files (*.xlsx)|*.xlsx|All Files (*.*)|*.*";
-                openFileDialog.FilterIndex = 1;
-                openFileDialog.RestoreDirectory = true;
-
-                if (openFileDialog.ShowDialog() == DialogResult.OK)
-                {
-                    // Get the path of the selected file
-                    excelFilePath = openFileDialog.FileName;
-                    MessageBox.Show($"Excel file path set to: {excelFilePath}", "File Selected", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                    // Reload the units and issuers after selecting the new file
-                    InitializeUnitComboBox();  // Reload unit names from the new file
-                    LoadIssuerNames();         // Reload issuer names from the new file
-                }
-            }
-        }
-
         private void ResetForm()
         {
             // Temporarily detach the event handler to avoid triggering during reset
@@ -748,199 +905,61 @@ namespace SOFA_Generator
 
         private void btnSaveSignature_Click(object sender, EventArgs e)
         {
-            try
+            // locate the already‐filled PDF
+            var pdfOut = Path.Combine(baseDir, "Resources", "PDF", "Form4EJ_Filled.pdf");
+            if (!File.Exists(pdfOut))
             {
-                // Step 1: Capture the signature and save it
-                using (Bitmap bitmap = new Bitmap(signaturePanel.Width, signaturePanel.Height))
-                {
-                    signaturePanel.DrawToBitmap(bitmap, new Rectangle(0, 0, signaturePanel.Width, signaturePanel.Height));
-
-                    // Save the signature image to a temporary file
-                    string filePath = Path.Combine(Path.GetTempPath(), "signatureCapture.jpg");
-                    bitmap.Save(filePath, ImageFormat.Jpeg);
-
-                    // Step 2: Set the paths for the PDF
-                    string pdfTemplatePath = Path.Combine(baseDir, "Resources", "PDF", "Form4EJ.pdf");
-                    string outputPdfPath = Path.Combine(baseDir, "Resources", "PDF", "Form4EJ_Filled.pdf");
-
-                    // Step 3: Prepare form data (for saving to both Excel and PDF)
-                    string unitValue = unitComboBox.SelectedItem?.ToString()?.Trim() ?? "";
-
-                    var formData = new Dictionary<string, string>
-            {
-                // PDF field names
-                { "NAME", lastNameTextBox.Text + ", " + firstNameTextBox.Text },  // For PDF
-                { "UNIT", unitValue },  // PDF field uses "UNIT"
-                { "SEX", sexComboBox.SelectedItem?.ToString() ?? "" },
-                { "DOB", dobDateTimePicker.Value.ToShortDateString() },
-                { "HEIGHT", heightTextBox.Text },
-                { "WEIGHT", weightTextBox.Text },
-                { "HAIRCOLOR", hairColorComboBox.SelectedItem?.ToString() ?? "" },
-                { "EYECOLOR", eyeColorComboBox.SelectedItem?.ToString() ?? "" },
-                { "ISSUER", issuerComboBox.SelectedItem?.ToString() ?? "" },
-                { "AUTO/JEEP", autoJeepCheckBox.Checked ? "Yes" : "Off" },
-                { "MOTORCYCLE", motorcycleCheckBox.Checked ? "Yes" : "Off" },
-                { "GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "No" },
-                { "CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? "" },
-                { "Remarks", remarksBox.Text },
-                { "MSF", msfTextBox.Text },
-
-                // Excel fields
-                { "Last Name", lastNameTextBox.Text },  // For Excel
-                { "First Name", firstNameTextBox.Text },  // For Excel
-                { "DoD ID #", dodIdTextBox.Text },
-                { "Status", statusComboBox.SelectedItem?.ToString() ?? "" },
-                { "Stamp", stampComboBox.SelectedItem?.ToString() ?? "" },
-                { "Rank", GetSelectedRank() },  // Excel field for rank
-                { "Unit", unitValue },  // Excel field uses "Unit"
-            };
-
-                    FileInfo fileInfo = new FileInfo(excelFilePath);
-                    using (ExcelPackage package = new ExcelPackage(fileInfo))
-                    {
-                        ExcelWorksheet worksheet = package.Workbook.Worksheets[0];
-
-                        if (worksheet.Dimension == null || worksheet.Dimension.End.Row == 0)
-                        {
-                            MessageBox.Show("The worksheet is empty or not properly loaded.");
-                            return;
-                        }
-
-                        int rowIndex = -1;
-
-                        // Find the row by DoD ID
-                        for (int i = 2; i <= worksheet.Dimension.End.Row; i++)
-                        {
-                            if (worksheet.Cells[i, 6].Text == formData["DoD ID #"])  // Column 6 for "DoD ID #"
-                            {
-                                rowIndex = i;
-                                break;
-                            }
-                        }
-
-                        // If not found, create a new row
-                        if (rowIndex == -1)
-                        {
-                            rowIndex = worksheet.Dimension.End.Row + 1;
-                        }
-
-                        // Save or update all Excel data (including permit data)
-                        worksheet.Cells[rowIndex, 1].Value = formData["Last Name"];
-                        worksheet.Cells[rowIndex, 2].Value = formData["First Name"];
-                        worksheet.Cells[rowIndex, 3].Value = formData["Status"];
-                        worksheet.Cells[rowIndex, 4].Value = formData["Rank"];
-                        worksheet.Cells[rowIndex, 5].Value = formData["Unit"];
-                        worksheet.Cells[rowIndex, 6].Value = formData["DoD ID #"];
-                        worksheet.Cells[rowIndex, 15].Value = formData["SEX"];
-                        worksheet.Cells[rowIndex, 16].Value = formData["DOB"];
-                        worksheet.Cells[rowIndex, 17].Value = formData["HEIGHT"];
-                        worksheet.Cells[rowIndex, 18].Value = formData["WEIGHT"];
-                        worksheet.Cells[rowIndex, 19].Value = formData["HAIRCOLOR"];
-                        worksheet.Cells[rowIndex, 20].Value = formData["EYECOLOR"];
-                        worksheet.Cells[rowIndex, 21].Value = formData["GLASSES/CONTACTS"];
-
-                        // Check if Permit #1 is filled
-                        string existingPermit1 = worksheet.Cells[rowIndex, 7].Text;
-
-                        if (string.IsNullOrEmpty(existingPermit1))
-                        {
-                            // Permit #1 is empty, so save Permit #1 data
-                            worksheet.Cells[rowIndex, 7].Value = permit1TextBox.Text;
-                            worksheet.Cells[rowIndex, 8].Value = issue1DateTimePicker.Value.ToShortDateString();
-                            worksheet.Cells[rowIndex, 9].Value = exp1DateTimePicker.Value.ToShortDateString();
-
-                            formData["PERMIT"] = permit1TextBox.Text ?? "";  // Save Permit #1 number
-                            formData["ISSUE"] = issue1DateTimePicker.Value.ToShortDateString();  // Use Permit #1 issue date
-                            formData["Exp"] = exp1DateTimePicker.Value.ToShortDateString();  // Set Permit #1 expiration date
-                        }
-                        else
-                        {
-                            // Permit #1 is filled, so overwrite Permit #2
-                            worksheet.Cells[rowIndex, 10].Value = permit2TextBox.Text ?? "";
-                            worksheet.Cells[rowIndex, 11].Value = issue2DateTimePicker.Value.ToShortDateString();
-                            worksheet.Cells[rowIndex, 12].Value = exp2DateTimePicker.Value.ToShortDateString();
-
-                            formData["PERMIT"] = permit2TextBox.Text ?? "";  // Save Permit #2 number
-                            formData["ISSUE"] = issue2DateTimePicker.Value.ToShortDateString();  // Use Permit #2 issue date
-                            formData["Exp"] = exp2DateTimePicker.Value.ToShortDateString();  // Set Permit #2 expiration date
-                        }
-
-                        // Save other optional fields (MSF, remarks, etc.)
-                        worksheet.Cells[rowIndex, 13].Value = formData["MSF"];
-                        worksheet.Cells[rowIndex, 14].Value = formData["CAT/PAX"];
-                        worksheet.Cells[rowIndex, 22].Value = formData["Remarks"];
-                        worksheet.Cells[rowIndex, 23].Value = formData["Stamp"];
-
-                        // Save the Excel file
-                        package.Save();
-                    }
-
-                    // Step 6: Generate the PDF
-                    CompletePdfWorkflow(pdfTemplatePath, outputPdfPath, formData, filePath);
-
-                    // Step 7: Automatically print the filled PDF to the default printer
-                    PrintPdf(outputPdfPath);
-
-                    // Confirmation message
-                    MessageBox.Show("PDF generated, data saved, and sent to printer!");
-                }
+                MessageBox.Show("No filled PDF found. Please press Save first.");
+                return;
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"An error occurred while saving the signature or generating the PDF: {ex.Message}");
-            }
+
+            // print it
+            PrintPdf(pdfOut);
         }
-        // Method to print the PDF
-        private void PrintPdf(string pdfFilePath)
+
+        private void PrintPdf(string pdfPath)
         {
-            try
+            if (string.IsNullOrWhiteSpace(pdfPath) || !File.Exists(pdfPath))
             {
-                // Path to Adobe Reader executable (change this if it's installed elsewhere)
-                string adobeReaderPath = @"C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe";
-
-                // Check if Adobe Reader is installed
-                if (!File.Exists(adobeReaderPath))
-                {
-                    MessageBox.Show("Adobe Reader is not installed or not found at the specified path.");
-                    return;
-                }
-
-                // Use Adobe Reader to print the PDF
-                Process printProcess = new Process();
-                printProcess.StartInfo = new ProcessStartInfo
-                {
-                    FileName = adobeReaderPath,
-                    Arguments = $"/t \"{pdfFilePath}\"",  // /t prints the file to the default printer
-                    CreateNoWindow = true,
-                    WindowStyle = ProcessWindowStyle.Hidden
-                };
-                printProcess.Start();
-
-                // Optionally, wait for the process to complete printing
-                printProcess.WaitForExit(10000); // Wait for 10 seconds for printing to complete
-                printProcess.Close();
+                MessageBox.Show("PDF not found.");
+                return;
             }
-            catch (Exception ex)
+
+            // This path is stable on Windows 10/11
+            string edgeExe = @"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe";
+
+            // If Edge isn't there for some reason, fall back to default PDF handler
+            if (!File.Exists(edgeExe))
             {
-                MessageBox.Show($"Error while printing the PDF: {ex.Message}");
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = pdfPath,
+                    UseShellExecute = true
+                });
+                return;
             }
+
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = edgeExe,
+                Arguments = $"\"{pdfPath}\"",
+                UseShellExecute = false
+            });
         }
-
 
         private void InitializeCatPaxComboBox()
         {
             catPaxComboBox.Items.Clear();
-            catPaxComboBox.Items.Add("Cat 1: 50cc or less");
+            catPaxComboBox.Items.Add("Cat 0A: Bicycles");
+            catPaxComboBox.Items.Add("Cat 0B: Electric Bicycles");
+            catPaxComboBox.Items.Add("Cat 1: Mopeds 50cc or less");
             catPaxComboBox.Items.Add("Cat 2: Motorcycles 125cc or less");
             catPaxComboBox.Items.Add("Cat 3: Motorcycles 400cc or less");
             catPaxComboBox.Items.Add("Cat 4: Motorcycles 750cc or less");
             catPaxComboBox.Items.Add("Cat 5: Motorcycles over 750cc");
 
-            // Optionally, select the first item as default
             if (catPaxComboBox.Items.Count > 0)
-            {
                 catPaxComboBox.SelectedIndex = 0;
-            }
         }
 
         private void SaveDataToExcel(Dictionary<string, string> data)
@@ -1016,7 +1035,9 @@ namespace SOFA_Generator
                     worksheet.Cells[rowIndex, 20].Value = data["EYECOLOR"];
                     worksheet.Cells[rowIndex, 21].Value = data["GLASSES/CONTACTS"];
                     worksheet.Cells[rowIndex, 22].Value = data["Remarks"];
-                    worksheet.Cells[rowIndex, 23].Value = data["Stamp"];  // Write "Stamp" in column 23
+                    worksheet.Cells[rowIndex, 23].Value = data["Stamp"];
+                    worksheet.Cells[rowIndex, 24].Value = data["Moped"];
+                    worksheet.Cells[rowIndex, 25].Value = data["Other"];
 
                     // Save the Excel file
                     package.Save();
@@ -1048,7 +1069,7 @@ namespace SOFA_Generator
         {
             try
             {
-                using (FileStream stream = file.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+                using (FileStream stream = file.Open(FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite))
                 {
                     stream.Close();
                 }
@@ -1058,25 +1079,6 @@ namespace SOFA_Generator
                 return true;
             }
             return false;
-        }
-
-        private void motorcycleCheckBox_CheckedChanged(object sender, EventArgs e)
-        {
-            // Show/Hide MSF and Category fields based on the motorcycle checkbox state
-            bool isMotorcycleSelected = motorcycleCheckBox.Checked;
-
-            // Show or hide the msfTextBox and CAT/PAX combo box based on the checkbox state
-            msfTextBox.Visible = isMotorcycleSelected;
-            catPaxComboBox.Visible = isMotorcycleSelected;
-            catLabel.Visible = isMotorcycleSelected;
-            MSFlabel.Visible = isMotorcycleSelected;
-
-            // If motorcycle is unchecked, clear the text and reset combo box selection
-            if (!isMotorcycleSelected)
-            {
-                msfTextBox.Clear();
-                catPaxComboBox.SelectedIndex = -1; // Unselect any category
-            }
         }
 
 
@@ -1120,7 +1122,7 @@ namespace SOFA_Generator
         }
         private void FillPdfFields(PdfAcroForm form, Dictionary<string, string> formData)
         {
-            string[] pdfFields = { "ISSUE", "NAME", "ID", "SEX", "DOD", "HEIGHT", "WEIGHT", "Exp", "HAIRCOLOR", "EYECOLOR", "UNIT", "ISSUER", "PERMIT", "AUTO/JEEP", "MOTORCYCLE", "GLASSES/CONTACTS", "CAT/PAX", "Remarks" };
+            string[] pdfFields = { "ISSUE", "NAME", "ID", "SEX", "DOD", "HEIGHT", "WEIGHT", "Exp", "HAIRCOLOR", "EYECOLOR", "UNIT", "ISSUER", "PERMIT", "AUTO/JEEP", "MOTORCYCLE", "MOPED", "OTHER", "GLASSES/CONTACTS", "CAT/PAX", "Remarks" };
 
             foreach (string field in pdfFields)
             {
@@ -1203,7 +1205,7 @@ namespace SOFA_Generator
 
                     // Fill the form fields using the available data
                     form.GetField("ISSUE")?.SetValue(formData["ISSUE"]);
-                    form.GetField("NAME")?.SetValue(formData["NAME"]);
+                    form.GetField("NAME")?.SetValue($"{formData["Last Name"]}, {formData["First Name"]}");
                     form.GetField("ID")?.SetValue(formData["DoD ID #"]);
                     form.GetField("SEX")?.SetValue(formData["SEX"]);
                     form.GetField("DOB")?.SetValue(formData["DOB"]);
@@ -1212,13 +1214,15 @@ namespace SOFA_Generator
                     form.GetField("Exp")?.SetValue(formData["Exp"]);
                     form.GetField("HAIRCOLOR")?.SetValue(formData["HAIRCOLOR"]);
                     form.GetField("EYECOLOR")?.SetValue(formData["EYECOLOR"]);
-                    form.GetField("UNIT")?.SetValue(formData["UNIT"]);
+                    form.GetField("UNIT")?.SetValue(formData["Unit"]);
                     form.GetField("ISSUER")?.SetValue(formData["ISSUER"]);
                     form.GetField("PERMIT")?.SetValue(formData["PERMIT"]);
 
                     // Debug for MOTORCYCLE checkbox
                     form.GetField("AUTO/JEEP")?.SetValue(formData["AUTO/JEEP"] == "Yes" ? "Yes" : "Off");
                     form.GetField("MOTORCYCLE")?.SetValue(formData["MOTORCYCLE"] == "Yes" ? "Yes" : "Off");
+                    form.GetField("MOPED")?.SetValue(formData["MOPED"] == "Yes" ? "Yes" : "Off");
+                    form.GetField("OTHER")?.SetValue(formData["OTHER"] == "Yes" ? "Yes" : "Off");
                     form.GetField("GLASSES/CONTACTS")?.SetValue(formData["GLASSES/CONTACTS"]);
 
                     // Use the mapped description for CAT/PAX in the PDF
@@ -1227,6 +1231,8 @@ namespace SOFA_Generator
 
                     form.GetField("Remarks")?.SetValue(formData["Remarks"]);
                     form.GetField("Stamp")?.SetValue(formData["Stamp"]);
+
+
 
                     // Insert the corresponding stamp image based on the stampComboBox selection
                     string stampSelection = stampComboBox.SelectedItem?.ToString() ?? "";
@@ -1350,7 +1356,6 @@ namespace SOFA_Generator
             }
         }
 
-        // Helper method to remove the stamp field if no stamp is selected
         private void RemoveStampField(PdfAcroForm form, string fieldName)
         {
             PdfFormField stampField = form.GetField(fieldName);
@@ -1360,9 +1365,60 @@ namespace SOFA_Generator
             }
         }
 
+        private void FillPdf(
+            string pdfTemplatePath,
+            string outputPdfPath,
+            Dictionary<string, string> formData,
+            string signatureImagePath)
+        {
+            // your existing CompletePdfWorkflow body, *minus* the PrintPdf call
+            CompletePdfWorkflow(pdfTemplatePath, outputPdfPath, formData, signatureImagePath);
+        }
 
         private void btnGeneratePdf_Click(object sender, EventArgs e)
         {
+            if (!ValidateUnit()) return;
+            var unitText = unitComboBox.Text.Trim();
+            var unitCanon = _validUnits.First(u =>
+                string.Equals(u, unitText, StringComparison.OrdinalIgnoreCase));
+            unitComboBox.SelectedItem = unitCanon;
+            var current = BuildFormDataFromUI(); // snapshot of UI
+
+            var saved = LoadFormDataFromExcel(current["DoD ID #"]);
+            if (saved != null)
+            {
+                // pick the fields that matter for a “did you mean to update” decision
+                var differs = AreDifferent(current, saved,
+                    "Last Name", "First Name", "Status", "Rank", "Unit", "PERMIT", "ISSUE", "Exp", "MSF", "CAT/PAX", "Remarks", "AUTO/JEEP", "MOTORCYCLE", "MOPED", "OTHER");
+
+                if (differs)
+                {
+                    var choice = MessageBox.Show(
+                        "This record has unsaved changes. Print the saved permit, or save your updates then print?",
+                        "Data differs from saved record",
+                        MessageBoxButtons.YesNoCancel,
+                        MessageBoxIcon.Question,
+                        MessageBoxDefaultButton.Button1);
+
+                    // Yes = Print saved, No = Save update then print, Cancel = stop
+                    if (choice == DialogResult.Yes)
+                    {
+                        // rebuild formData from saved to guarantee PDF matches Excel
+                        current = saved;
+                    }
+                    else if (choice == DialogResult.No)
+                    {
+                        // Do not stomp permit numbers: only update non-permit fields if you want
+                        // or call your existing SaveDataToExcel which already targets columns
+                        SaveDataToExcel(current); // this writes Unit at col 5 etc
+                                                  // You might want to preserve existing permit numbers here
+                    }
+                    else
+                    {
+                        return; // canceled
+                    }
+                }
+            }
             // Define paths for the template PDF, output PDF, and signature image
             // PDF path
             string pdfTemplatePath = Path.Combine(baseDir, "Resources", "PDF", "Form4EJ.pdf");
@@ -1390,11 +1446,14 @@ namespace SOFA_Generator
     { "UNIT", unitComboBox.SelectedItem?.ToString() ?? "" },
     { "ISSUER", issuerComboBox.SelectedItem?.ToString() ?? "" },
     { "PERMIT", permit1TextBox.Text },
-    { "AUTO/JEEP", autoJeepCheckBox.Checked ? "Yes" : "No" },
-    { "MOTORCYCLE", motorcycleCheckBox.Checked ? "Yes" : "No" },
-    { "GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "No" },
+    { "AUTO/JEEP", autoJeepCheckBox.Checked ? "Yes" : "" },
+    { "MOTORCYCLE", motorcycleCheckBox.Checked ? "Yes" : "" },
+    { "GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "" },
     { "CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? "" },
-    { "Remarks", remarksBox.Text }
+    { "Remarks", remarksBox.Text },
+    { "MOPED", mopedCheckBox.Checked ? "Yes" : "" },
+    { "OTHER", otherCheckBox.Checked ? "Yes" : "" },
+
 };
 
 
@@ -1402,52 +1461,375 @@ namespace SOFA_Generator
             CompletePdfWorkflow(pdfTemplatePath, outputPdfPath, formData, signatureImagePath);
         }
 
+        private Dictionary<string, string> BuildFormDataFromUI()
+        {
+            return new Dictionary<string, string>
+    {
+        {"Last Name", lastNameTextBox.Text},
+        {"First Name", firstNameTextBox.Text},
+        {"DoD ID #", dodIdTextBox.Text},
+        {"Status", statusComboBox.SelectedItem?.ToString() ?? ""},
+        {"Rank", GetSelectedRank()},
+        {"Unit", unitComboBox.SelectedItem?.ToString() ?? ""},
+        {"Stamp", stampComboBox.SelectedItem?.ToString() ?? ""},
+        {"PERMIT", string.IsNullOrEmpty(permit2TextBox.Text) ? permit1TextBox.Text : permit2TextBox.Text},
+        {"ISSUE", (string.IsNullOrEmpty(permit2TextBox.Text) ? issue1DateTimePicker.Value : issue2DateTimePicker.Value).ToShortDateString()},
+        {"Exp",   (string.IsNullOrEmpty(permit2TextBox.Text) ? exp1DateTimePicker.Value   : exp2DateTimePicker.Value).ToShortDateString()},
+        {"MSF",   msfTextBox.Text},
+        {"CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? ""},
+        {"SEX",   sexComboBox.SelectedItem?.ToString() ?? ""},
+        {"DOB",   dobDateTimePicker.Value.ToShortDateString()},
+        {"HEIGHT", heightTextBox.Text},
+        {"WEIGHT", weightTextBox.Text},
+        {"HAIRCOLOR", hairColorComboBox.SelectedItem?.ToString() ?? ""},
+        {"EYECOLOR", eyeColorComboBox.SelectedItem?.ToString() ?? ""},
+        {"GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : ""},
+        {"Remarks", remarksBox.Text},
+        {"ISSUER", issuerComboBox.SelectedItem?.ToString() ?? ""},
+        {"AUTO/JEEP", autoJeepCheckBox.Checked ? "Yes" : ""},
+        {"MOTORCYCLE", motorcycleCheckBox.Checked ? "Yes" : ""},
+        { "MOPED", mopedCheckBox.Checked ? "Yes" : "" },
+        { "OTHER", otherCheckBox.Checked ? "Yes" : "" },
+    };
+        }
+
+        private Dictionary<string, string>? LoadFormDataFromExcel(string dodId)
+        {
+            var fi = new FileInfo(excelFilePath);
+            using var pkg = new OfficeOpenXml.ExcelPackage(fi);
+            var ws = pkg.Workbook.Worksheets[0];
+            if (ws?.Dimension == null) return null;
+
+            int row = -1;
+            for (int i = 2; i <= ws.Dimension.End.Row; i++)
+                if (ws.Cells[i, 6].Text == dodId) { row = i; break; }
+
+            if (row == -1) return null;
+
+            // Map the same fields you save in SaveDataToExcel
+            var dict = new Dictionary<string, string>
+    {
+        {"Last Name", ws.Cells[row,1].Text},
+        {"First Name", ws.Cells[row,2].Text},
+        {"Status", ws.Cells[row,3].Text},
+        {"Rank", ws.Cells[row,4].Text},
+        {"Unit", ws.Cells[row,5].Text},
+        {"DoD ID #", ws.Cells[row,6].Text},
+        {"PERMIT", ws.Cells[row,10].Text != "" ? ws.Cells[row,10].Text : ws.Cells[row,7].Text},
+        {"ISSUE",  ws.Cells[row,10].Text != "" ? ws.Cells[row,11].Text : ws.Cells[row,8].Text},
+        {"Exp",    ws.Cells[row,10].Text != "" ? ws.Cells[row,12].Text : ws.Cells[row,9].Text},
+        {"MSF", ws.Cells[row, 13].Text},
+        {"CAT/PAX", ws.Cells[row, 14].Text},
+    };
+            return dict;
+        }
+
+        private bool AreDifferent(Dictionary<string, string> a, Dictionary<string, string> b, params string[] keys)
+        {
+            foreach (var k in keys)
+            {
+                a.TryGetValue(k, out var av);
+                b.TryGetValue(k, out var bv);
+                if (!string.Equals(av?.Trim() ?? "", bv?.Trim() ?? "", StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
+
+
+        private void LanguageButton_Click(object sender, EventArgs e)
+        {
+            using (var dlg = new Form())
+            {
+                dlg.Text = "近日公開予定";
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.ClientSize = new Size(360, 180);
+
+                var lbl = new Label
+                {
+                    Text = "言語切替機能は現在開発中です。\nまだ実装されていません。",
+                    Font = new Font("Meiryo", 14F, FontStyle.Regular),
+                    AutoSize = false,
+                    Dock = DockStyle.Fill,
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+
+                var btn = new Button
+                {
+                    Text = "OK",
+                    Dock = DockStyle.Bottom,
+                    Height = 40
+                };
+                btn.Click += (s, a) => dlg.Close();
+
+                dlg.Controls.Add(lbl);
+                dlg.Controls.Add(btn);
+                dlg.ShowDialog(this);
+            }
+        }
+
         private void btnGeneratePermitNumber_Click(object sender, EventArgs e)
         {
-            string nextPermitNumber = GenerateNextPermitNumber();
-            if (groupBox2.Visible)
-            {
-                permit2TextBox.Text = nextPermitNumber;
-            }
-            else
-            {
-                permit1TextBox.Text = nextPermitNumber;
-            }
-        }
+            if (!ValidateUnit()) return;
+            var unitText = unitComboBox.Text.Trim();
+            var unitCanon = _validUnits.First(u =>
+                string.Equals(u, unitText, StringComparison.OrdinalIgnoreCase));
+            unitComboBox.SelectedItem = unitCanon;   // lock it in
 
-        private string GenerateNextPermitNumber()
-        {
-            FileInfo fileInfo = new FileInfo(excelFilePath);
-            using (ExcelPackage package = new ExcelPackage(fileInfo))
-            {
-                ExcelWorksheet worksheet = package.Workbook.Worksheets[0];
-                HashSet<int> usedPermitNumbers = new HashSet<int>(); // Use HashSet for faster lookup
+            // 0) If unchecked, skip new-permit and just re-print / re-save.
+            bool assigningNewPermit = PermitcheckBox.Checked;
 
-                for (int rowIndex = 2; rowIndex <= worksheet.Dimension.End.Row; rowIndex++)
+            // 1) Open Excel
+            if (!TryOpenSofa(out var package)) return;
+            var ws = package.Workbook.Worksheets[0];
+
+            int nextNum = 0;
+            string paddedNext = "";
+            TextBox? assignedPermitBox = null;
+
+            if (assigningNewPermit)
+            {
+                // 2) Collect used permit numbers
+                var used = new HashSet<int>();
+                for (int r = 2; r <= ws.Dimension.End.Row; r++)
                 {
-                    string permit1NumberStr = worksheet.Cells[rowIndex, 7].Text;
-                    string permit2NumberStr = worksheet.Cells[rowIndex, 10].Text;
+                    if (int.TryParse(ws.Cells[r, 7].Text, out int p1)) used.Add(p1);
+                    if (int.TryParse(ws.Cells[r, 10].Text, out int p2)) used.Add(p2);
+                }
 
-                    if (int.TryParse(permit1NumberStr, out int permit1Number))
+                // 3) Find lowest-unused positive integer
+                nextNum = 1;
+                while (used.Contains(nextNum)) nextNum++;
+
+                // 4) Format with padding
+                paddedNext = nextNum.ToString("D6");
+
+
+                // 5) Populate into the first empty slot
+                // This is only a preview — since the workbook lives on a
+                // OneDrive-synced share, another workstation could grab the
+                // same "next available" number before we save. It gets
+                // re-validated against the freshest copy right before the
+                // actual write, below.
+                if (string.IsNullOrWhiteSpace(permit1TextBox.Text))
+                {
+                    permit1TextBox.Text = paddedNext;
+                    assignedPermitBox = permit1TextBox;
+                }
+                else
+                {
+                    permit2TextBox.Text = paddedNext;
+                    assignedPermitBox = permit2TextBox;
+                }
+            }
+
+            // 6) Capture signature to temp JPEG
+            string sigPath = Path.Combine(Path.GetTempPath(), "signatureCapture.jpg");
+            using (var bmp = new Bitmap(signaturePanel.Width, signaturePanel.Height))
+            {
+                signaturePanel.DrawToBitmap(bmp, new Rectangle(0, 0, bmp.Width, bmp.Height));
+                bmp.Save(sigPath, ImageFormat.Jpeg);
+            }
+
+            // 7) Build formData (make sure this dictionary is defined earlier in your method)
+            var formData = new Dictionary<string, string>
+            {
+                {"Last Name", lastNameTextBox.Text},
+                {"First Name", firstNameTextBox.Text},
+                {"DoD ID #", dodIdTextBox.Text},
+                {"Status", statusComboBox.SelectedItem?.ToString() ?? ""},
+                {"Rank", GetSelectedRank()},
+                { "Unit", unitComboBox.SelectedItem?.ToString() ?? "" },
+                {"Stamp", stampComboBox.SelectedItem?.ToString() ?? ""},
+                {"PERMIT", permit2TextBox.Text != "" ? permit2TextBox.Text : permit1TextBox.Text},
+                {"ISSUE", (permit2TextBox.Text != ""
+                             ? issue2DateTimePicker.Value
+                             : issue1DateTimePicker.Value)
+                             .ToShortDateString()},
+                {"Exp",   (permit2TextBox.Text != ""
+                             ? exp2DateTimePicker.Value
+                             : exp1DateTimePicker.Value)
+                             .ToShortDateString()},
+                {"MSF",   msfTextBox.Text},
+                {"CAT/PAX", catPaxComboBox.SelectedItem?.ToString() ?? ""},
+                {"SEX",   sexComboBox.SelectedItem?.ToString() ?? ""},
+                {"DOB",   dobDateTimePicker.Value.ToShortDateString()},
+                {"HEIGHT", heightTextBox.Text},
+                {"WEIGHT", weightTextBox.Text},
+                {"HAIRCOLOR", hairColorComboBox.SelectedItem?.ToString() ?? ""},
+                {"EYECOLOR", eyeColorComboBox.SelectedItem?.ToString() ?? ""},
+                {"GLASSES/CONTACTS", restrictionsBox.Checked ? "Yes" : "No"},
+                {"Remarks", remarksBox.Text},
+                {"ISSUER", issuerComboBox.SelectedItem?.ToString() ?? ""},
+                {"AUTO/JEEP", autoJeepCheckBox.Checked ? "Yes" : "No"},
+                {"MOTORCYCLE", motorcycleCheckBox.Checked ? "Yes" : "No"},
+                {"MOPED", mopedCheckBox.Checked ? "Yes" : "No" },
+                {"OTHER", otherCheckBox.Checked ? "Yes" : "No" },
+            };
+
+            // 8) Write to Excel (find or append row) — only one block!
+            var fileInfo = new FileInfo(excelFilePath);
+            using (var pkg = new ExcelPackage(fileInfo))
+            {
+                var sheet = pkg.Workbook.Worksheets[0];
+                int row = -1;
+                for (int i = 2; i <= sheet.Dimension.End.Row; i++)
+                    if (sheet.Cells[i, 6].Text == formData["DoD ID #"])
                     {
-                        usedPermitNumbers.Add(permit1Number);
+                        row = i;
+                        break;
+                    }
+                if (row == -1)
+                    row = sheet.Dimension.End.Row + 1;
+
+                // Decide whether to use Permit1 or Permit2 slot
+                // Only touch the permit columns when we actually assigned a new
+                // permit number above — otherwise nextNum is still 0 and would
+                // stamp "000000" into the sheet on a plain reprint/re-save.
+                if (assigningNewPermit)
+                {
+                    // Re-validate the number against this just-reopened copy of
+                    // the file, right before writing. The workbook lives on a
+                    // OneDrive-synced share used by multiple workstations, so
+                    // the "next available" number picked earlier (when the
+                    // button was clicked) may have gone stale — another PC's
+                    // save could have synced down in the meantime. Re-checking
+                    // here, as close to the save as possible, shrinks that
+                    // race window from "however long the tech spent on the
+                    // form" down to milliseconds. It cannot fully eliminate it
+                    // (a truly simultaneous save from another machine, whose
+                    // change hasn't synced down yet, is still possible), so
+                    // this is a mitigation, not a guarantee.
+                    var usedNow = new HashSet<int>();
+                    for (int r = 2; r <= sheet.Dimension.End.Row; r++)
+                    {
+                        if (int.TryParse(sheet.Cells[r, 7].Text, out int up1)) usedNow.Add(up1);
+                        if (int.TryParse(sheet.Cells[r, 10].Text, out int up2)) usedNow.Add(up2);
+                    }
+                    if (usedNow.Contains(nextNum))
+                    {
+                        nextNum = 1;
+                        while (usedNow.Contains(nextNum)) nextNum++;
+                        paddedNext = nextNum.ToString("D6");
+
+                        if (assignedPermitBox != null)
+                            assignedPermitBox.Text = paddedNext;
+                        formData["PERMIT"] = paddedNext;
                     }
 
-                    if (int.TryParse(permit2NumberStr, out int permit2Number))
+                    var existingP1 = sheet.Cells[row, 7].Text.Trim();
+                    if (string.IsNullOrEmpty(existingP1))
                     {
-                        usedPermitNumbers.Add(permit2Number);
+                        var cell = sheet.Cells[row, 7];
+                        cell.Value = nextNum;
+                        cell.Style.Numberformat.Format = "000000";
+
+                        var cellIssue = sheet.Cells[row, 8];
+                        cellIssue.Value = formData["ISSUE"];
+                        var cellExp = sheet.Cells[row, 9];
+                        cellExp.Value = formData["Exp"];
+                    }
+                    else
+                    {
+                        var cell = sheet.Cells[row, 10];
+                        cell.Value = nextNum;
+                        cell.Style.Numberformat.Format = "000000";
+
+                        sheet.Cells[row, 11].Value = formData["ISSUE"];
+                        sheet.Cells[row, 12].Value = formData["Exp"];
                     }
                 }
 
-                int nextPermitNumber = 1;
-                while (usedPermitNumbers.Contains(nextPermitNumber))
+                // Now write the rest of your fields once
+                sheet.Cells[row, 1].Value = formData["Last Name"];
+                sheet.Cells[row, 2].Value = formData["First Name"];
+                sheet.Cells[row, 3].Value = formData["Status"];
+                sheet.Cells[row, 4].Value = formData["Rank"];
+                sheet.Cells[row, 5].Value = formData["Unit"];
+                sheet.Cells[row, 6].Value = formData["DoD ID #"];
+                sheet.Cells[row, 13].Value = formData["MSF"];
+                sheet.Cells[row, 14].Value = formData["CAT/PAX"];
+                sheet.Cells[row, 15].Value = formData["SEX"];
+                sheet.Cells[row, 16].Value = formData["DOB"];
+                sheet.Cells[row, 17].Value = formData["HEIGHT"];
+                sheet.Cells[row, 18].Value = formData["WEIGHT"];
+                sheet.Cells[row, 19].Value = formData["HAIRCOLOR"];
+                sheet.Cells[row, 20].Value = formData["EYECOLOR"];
+                sheet.Cells[row, 21].Value = formData["GLASSES/CONTACTS"];
+                sheet.Cells[row, 22].Value = formData["Remarks"];
+                sheet.Cells[row, 23].Value = formData["Stamp"];
+                sheet.Cells[row, 24].Value = formData["MOPED"];
+                sheet.Cells[row, 25].Value = formData["OTHER"];
+
+                const int maxAttempts = 5;
+                int attempts = 0;
+                while (true)
                 {
-                    nextPermitNumber++;
+                    try
+                    {
+                        pkg.Save();
+                        break;  // ← stop looping once we succeed
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        // dig into the nested InnerException chain
+                        var io = ex.InnerException?.InnerException as IOException;
+                        if (io == null)
+                            throw;    // it wasn’t the “file in use” case, re‐throw
+
+                        // file is locked by Excel
+                        attempts++;
+                        if (attempts >= maxAttempts)
+                        {
+                            MessageBox.Show(
+                                "Could not save SOFA.xlsx because it’s open in another program.\n" +
+                                "Please close the file and try again.",
+                                "File In Use",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Warning
+                            );
+                            return;
+                        }
+
+                        Thread.Sleep(500);
+                    }
                 }
 
-                return nextPermitNumber.ToString("D6");
+                if (assigningNewPermit)
+                {
+                    // Safety net for the residual race that the recheck above can't
+                    // close: scan the now-saved sheet for any other row also holding
+                    // this permit number. Won't catch a collision whose OneDrive sync
+                    // lands after this point, but it catches most local overlaps and
+                    // lets the tech fix it on the spot instead of it surfacing later.
+                    int duplicateCount = 0;
+                    for (int r = 2; r <= sheet.Dimension.End.Row; r++)
+                    {
+                        if (r == row) continue;
+                        if (int.TryParse(sheet.Cells[r, 7].Text, out int dp1) && dp1 == nextNum) duplicateCount++;
+                        if (int.TryParse(sheet.Cells[r, 10].Text, out int dp2) && dp2 == nextNum) duplicateCount++;
+                    }
+                    if (duplicateCount > 0)
+                    {
+                        MessageBox.Show(
+                            $"Permit number {paddedNext} also appears on another row.\n" +
+                            "This can happen if two workstations assigned a permit at nearly the same time. " +
+                            "Please check the SOFA King Data sheet and correct the duplicate.",
+                            "Possible Duplicate Permit Number",
+                            MessageBoxButtons.OK,
+                            MessageBoxIcon.Warning
+                        );
+                    }
+                }
+
+                // 9) Generate the filled PDF
+                var pdfTpl = Path.Combine(baseDir, "Resources", "PDF", "Form4EJ.pdf");
+                var pdfOut = Path.Combine(baseDir, "Resources", "PDF", "Form4EJ_Filled.pdf");
+                FillPdf(pdfTpl, pdfOut, formData, sigPath);
             }
         }
+
 
         private void exp1DateTimePicker_ValueChanged(object sender, EventArgs e)
         {
@@ -1632,6 +2014,16 @@ namespace SOFA_Generator
         }
 
         private void label2_Click_3(object sender, EventArgs e)
+        {
+
+        }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void checkBox1_CheckedChanged_1(object sender, EventArgs e)
         {
 
         }
